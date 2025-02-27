@@ -2,7 +2,7 @@ from murf import Murf
 import requests
 
 def save_to_file(text: str, voice_id: str, file_path: str):
-    client = Murf()
+    client = Murf(api_key="YOUR_API_KEY")
     
     res = client.text_to_speech.generate(
         text=text, 

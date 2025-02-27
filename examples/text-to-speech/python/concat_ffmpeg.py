@@ -39,7 +39,7 @@ def clean_up_files(file_paths):
         os.remove(file_path)
 
 def main(texts, voice_id):
-    client = Murf()
+    client = Murf(api_key="YOUR_API_KEY")
     
     audio_files = generate_audio_files(client, texts, voice_id)
     list_file_path = 'audio_files.txt'

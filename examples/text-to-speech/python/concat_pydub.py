@@ -23,7 +23,7 @@ def concatenate_audio_files(audio_segments, output_file, file_format):
     combined.export(output_file, format=file_format)
 
 def main(texts, voice_id, output_file, file_format):
-    client = Murf()
+    client = Murf(api_key="YOUR_API_KEY")
     
     audio_segments = generate_audio_files(client, texts, voice_id, file_format)
     

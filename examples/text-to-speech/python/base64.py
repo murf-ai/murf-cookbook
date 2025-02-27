@@ -1,7 +1,7 @@
 from murf import Murf
 
 def generate_base64(text: str, voice_id: str):
-    client = Murf()
+    client = Murf(api_key="YOUR_API_KEY")
     res = client.text_to_speech.generate(
         text=text, 
         voice_id=voice_id, 

@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Layer 3 · The Safety Net</title>
+<style>
+:root {
+  --bg: #0b0d12; --text: #e6e8ef; --muted: #8b91a3; --stroke: #2a3040;
+  --guard: #ff5a4d; --ok: #13ef93; --warn: #f4b13d; --blue: #3d7bff; --purple: #c77dff; --llm: #f4d35e;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  min-height: 100vh;
+  background: radial-gradient(ellipse at 50% 40%, #191319 0%, #0a0c10 72%);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+  overflow: hidden; display: flex; align-items: center; justify-content: center;
+}
+.stage { position: relative; width: 1240px; height: 760px; flex-shrink: 0; }
+
+/* Title */
+.title-wrap { position: absolute; top: 292px; left: 0; right: 0; text-align: center; transition: opacity 700ms var(--ease), transform 800ms var(--ease); pointer-events: none; z-index: 10; }
+.title-wrap .eyebrow { font-family: "SF Mono", Consolas, monospace; font-size: 14px; letter-spacing: 5px; text-transform: uppercase; color: var(--guard); margin-bottom: 16px; }
+.title-wrap h1 { margin: 0; font-size: 58px; font-weight: 700; letter-spacing: -1.8px; background: linear-gradient(95deg, #ffffff 0%, #ff5a4d 65%, #c81f33 100%); background-size: 220% 100%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; animation: sh 14s ease-in-out infinite; }
+@keyframes sh { 0%,100%{background-position:0% 50%;} 50%{background-position:100% 50%;} }
+.title-wrap .sub { margin-top: 20px; color: var(--muted); font-family: "SF Mono", Consolas, monospace; font-size: 13px; letter-spacing: 2px; }
+body:not(.title-mode) .title-wrap { opacity: 0; transform: translateY(-18px); }
+
+/* Guardrail shield */
+.shield { position: absolute; left: 380px; top: 150px; width: 430px; height: 230px; border-radius: 22px; border: 1.6px solid rgba(255,90,77,0.5); background: linear-gradient(180deg, rgba(255,90,77,0.055) 0%, rgba(255,90,77,0.015) 100%); box-shadow: 0 0 90px rgba(255,90,77,0.14), inset 0 0 70px rgba(255,90,77,0.03); opacity: 0; transform: scale(0.94); transform-origin: center; transition: opacity 800ms var(--ease), transform 850ms var(--ease), border-color 400ms ease, box-shadow 400ms ease; overflow: hidden; }
+.shield.show { opacity: 1; transform: scale(1); }
+.shield.flash { border-color: rgba(255,90,77,0.95); box-shadow: 0 0 150px rgba(255,90,77,0.32), inset 0 0 70px rgba(255,90,77,0.07); }
+.shield-net { position: absolute; inset: 0; background-image: repeating-linear-gradient(45deg, rgba(255,90,77,0.05) 0 1px, transparent 1px 16px), repeating-linear-gradient(-45deg, rgba(255,90,77,0.05) 0 1px, transparent 1px 16px); pointer-events: none; }
+.scanline { position: absolute; top: 6px; bottom: 6px; width: 66px; left: -66px; background: linear-gradient(90deg, transparent, rgba(255,120,110,0.14), transparent); pointer-events: none; }
+.shield.show .scanline { animation: scan 3.8s linear infinite; }
+@keyframes scan { 0% { transform: translateX(0); } 100% { transform: translateX(496px); } }
+.shield-label { position: absolute; left: 595px; top: 150px; transform: translate(-50%, -50%); z-index: 6; display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px; border-radius: 20px; background: #100b0d; border: 1px solid rgba(255,90,77,0.55); font-weight: 700; font-size: 13.5px; letter-spacing: 0.4px; color: #ff9d94; box-shadow: 0 6px 20px rgba(0,0,0,0.5); opacity: 0; transition: opacity 700ms ease 200ms; }
+.shield-label.show { opacity: 1; }
+.shield-label svg { width: 15px; height: 15px; }
+
+/* Core */
+.core { position: absolute; left: 463px; top: 239px; width: 264px; padding: 13px 16px; border-radius: 13px; background: linear-gradient(180deg, rgba(30,28,18,0.98), rgba(20,18,12,0.98)); border: 1px solid rgba(244,211,94,0.5); display: inline-flex; align-items: center; gap: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.55); opacity: 0; transform: scale(0.92); transition: opacity 700ms var(--ease) 250ms, transform 700ms var(--ease) 250ms; z-index: 5; }
+.core.show { opacity: 1; transform: scale(1); }
+.core .cicon { width: 30px; height: 30px; flex-shrink: 0; }
+.core .cicon svg { width: 100%; height: 100%; }
+.core .cname { font-weight: 700; font-size: 15.5px; line-height: 1.2; }
+.core .csub { font-family: "SF Mono", Consolas, monospace; font-size: 9.5px; color: var(--muted); margin-top: 3px; letter-spacing: 0.2px; }
+.lens { position: absolute; left: 392px; top: 245px; width: 40px; height: 40px; border-radius: 50%; background: #14090a; border: 1.5px solid rgba(255,90,77,0.65); display: flex; align-items: center; justify-content: center; z-index: 6; opacity: 0; transition: opacity 600ms ease 300ms; box-shadow: 0 0 20px rgba(255,90,77,0.3); }
+.lens.show { opacity: 1; }
+.lens svg { width: 20px; height: 20px; color: #ff8073; }
+
+/* Borrower + utterance */
+.borrower { position: absolute; left: 64px; top: 222px; opacity: 0; transform: translateY(10px); transition: opacity 600ms var(--ease), transform 600ms var(--ease); }
+.borrower.show { opacity: 1; transform: translateY(0); }
+.borrower .bcirc { width: 70px; height: 70px; border-radius: 50%; border: 1px solid var(--stroke); background: linear-gradient(180deg, rgba(26,30,42,0.98), rgba(16,19,28,0.98)); display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 30px rgba(0,0,0,0.55); }
+.borrower .bcirc svg { width: 34px; height: 34px; color: var(--text); }
+.borrower .blabel { text-align: center; margin-top: 8px; font-size: 12.5px; color: var(--muted); font-weight: 500; }
+.utter { position: absolute; left: 26px; top: 318px; padding: 9px 13px; border-radius: 12px 12px 12px 3px; background: #191d28; border: 1px solid var(--stroke); font-size: 12.5px; color: #dfe3ec; opacity: 0; transform: translateY(8px); transition: all 500ms var(--ease); white-space: nowrap; }
+.utter.show { opacity: 1; transform: translateY(0); }
+.utter b { color: #ff8073; }
+
+/* Watch-list strip */
+.wl-title { position: absolute; left: 45px; top: 522px; width: 1150px; text-align: center; font-family: "SF Mono", Consolas, monospace; font-size: 10.5px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--muted); opacity: 0; transition: opacity 480ms ease; }
+.wl-title.show { opacity: 1; }
+.tpill { position: absolute; top: 552px; width: 185px; padding: 9px 13px; border-radius: 11px; background: #12161f; border: 1px solid var(--stroke); opacity: 0; transform: translateY(10px); transition: opacity 460ms var(--ease), transform 460ms var(--ease), border-color 400ms ease, box-shadow 400ms ease; }
+.tpill.show { opacity: 1; transform: translateY(0); }
+.tpill.flash { border-color: rgba(255,90,77,0.8); box-shadow: 0 0 26px rgba(255,90,77,0.34); }
+.tpill .tp-head { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 700; }
+.tpill .tp-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.tpill .tp-sub { font-weight: 500; font-size: 9.5px; color: #8b91a3; }
+.tpill .tp-ex { font-family: "SF Mono", Consolas, monospace; font-size: 10px; color: var(--muted); margin-top: 4px; padding-left: 16px; }
+
+/* Emergency brake + outcomes */
+.brake { position: absolute; left: 886px; top: 182px; width: 192px; padding: 13px 15px; border-radius: 13px; background: linear-gradient(180deg, rgba(44,18,18,0.98), rgba(26,12,13,0.98)); border: 1.5px solid rgba(255,90,77,0.6); box-shadow: 0 10px 30px rgba(0,0,0,0.5); opacity: 0; transform: scale(0.9); transition: opacity 500ms var(--ease), transform 500ms var(--ease); }
+.brake.show { opacity: 1; transform: scale(1); }
+.brake.flash { animation: bflash 1.1s ease-in-out infinite; }
+@keyframes bflash { 0%,100% { box-shadow: 0 0 26px rgba(255,90,77,0.35); } 50% { box-shadow: 0 0 48px rgba(255,90,77,0.72); } }
+.brake .bk-head { display: flex; align-items: center; gap: 9px; font-weight: 700; font-size: 15px; color: #ff8073; }
+.brake .bk-head svg { width: 20px; height: 20px; }
+.brake .bk-sub { font-size: 11.5px; color: #c8b0ae; margin-top: 6px; line-height: 1.45; }
+.brake .bk-sub b { color: #ff9d94; }
+.ochip { position: absolute; left: 886px; width: 192px; padding: 11px 14px; border-radius: 11px; background: #12161f; border: 1px solid var(--stroke); opacity: 0; transform: translateY(8px); transition: all 500ms var(--ease); }
+.ochip.show { opacity: 1; transform: translateY(0); }
+.ochip .oc-head { display: flex; align-items: center; gap: 9px; font-size: 13.5px; font-weight: 700; }
+.ochip .oc-head svg { width: 17px; height: 17px; flex-shrink: 0; }
+.ochip .oc-sub { font-family: "SF Mono", Consolas, monospace; font-size: 9.5px; color: var(--muted); margin-top: 4px; padding-left: 26px; }
+.mapnote { position: absolute; left: 850px; top: 500px; width: 344px; font-size: 11px; line-height: 1.65; color: #9aa0af; opacity: 0; transition: opacity 480ms ease; }
+.mapnote.show { opacity: 1; }
+.mapnote b { color: #c8ccd6; }
+
+/* Pre-call block */
+.precall { position: absolute; left: 393px; top: 100px; width: 404px; padding: 9px 15px; border-radius: 12px; background: linear-gradient(180deg, rgba(40,16,16,0.97), rgba(22,11,12,0.97)); border: 1px dashed rgba(255,90,77,0.6); display: flex; align-items: center; gap: 11px; opacity: 0; transform: translateY(-8px); transition: all 550ms var(--ease); }
+.precall.show { opacity: 1; transform: translateY(0); }
+.precall svg { width: 21px; height: 21px; color: #ff8073; flex-shrink: 0; }
+.precall .pc-txt { font-size: 11.5px; line-height: 1.4; }
+.precall .pc-txt b { color: #ff9d94; font-weight: 700; }
+
+/* Arrows */
+.arrows { position: absolute; top: 0; left: 0; width: 1240px; height: 760px; pointer-events: none; overflow: visible; z-index: 3; }
+.sarrow { fill: none; stroke-width: 2; opacity: 0; stroke-dasharray: var(--len, 500); stroke-dashoffset: var(--len, 500); transition: opacity 300ms ease, stroke-dashoffset 800ms var(--ease) 100ms; stroke-linecap: round; stroke-linejoin: round; }
+.sarrow.on { opacity: 1; stroke-dashoffset: 0; }
+.sarrow.red { stroke: var(--guard); } .sarrow.grey { stroke: #6a7085; }
+.sarrow.dash { stroke-dasharray: 5 6; }
+.slabel { fill: var(--muted); font-family: "SF Mono", Consolas, monospace; font-size: 11px; opacity: 0; transition: opacity 500ms ease 200ms; }
+.slabel.on { opacity: 1; } .slabel.red { fill: #ff9d94; }
+
+/* Caption */
+.caption { position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%); width: 860px; text-align: center; font-size: 15.5px; line-height: 1.6; color: #c8cdda; opacity: 0; transition: opacity 400ms ease; }
+.caption.show { opacity: 1; }
+.caption b { color: #fff; font-weight: 700; } .caption .rd { color: #ff8073; font-weight: 700; }
+
+/* Chrome */
+.indicator { position: fixed; bottom: 28px; right: 30px; color: var(--muted); font-size: 13px; z-index: 20; min-width: 250px; }
+.ind-main { display: flex; align-items: baseline; gap: 8px; justify-content: flex-end; }
+.ind-num { color: var(--text); font-family: "SF Mono", Consolas, monospace; font-weight: 700; font-size: 13px; }
+.ind-sep { color: var(--muted); opacity: 0.45; } .ind-title { color: var(--text); font-weight: 500; font-size: 14px; }
+.ind-bar { margin-top: 8px; height: 2px; background: rgba(255,255,255,0.07); border-radius: 2px; overflow: hidden; }
+.ind-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #ff5a4d 0%, #c81f33 100%); transition: width 600ms var(--ease); border-radius: 2px; }
+.fs-btn { position: fixed; top: 22px; right: 26px; background: rgba(20,24,33,0.7); border: 1px solid var(--stroke); color: var(--muted); width: 38px; height: 38px; border-radius: 9px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; transition: all 200ms ease; z-index: 30; backdrop-filter: blur(6px); }
+.fs-btn svg { width: 16px; height: 16px; } .fs-btn:hover { color: var(--text); border-color: rgba(255,90,77,0.5); transform: translateY(-1px); }
+body.is-fs .fs-btn { display: none; } body.is-fs { cursor: none; } body.is-fs:hover { cursor: default; }
+.help { position: fixed; bottom: 26px; left: 30px; font-family: "SF Mono", Consolas, monospace; color: var(--muted); font-size: 11px; opacity: 0.6; z-index: 20; }
+.help kbd { display: inline-block; padding: 2px 7px; margin: 0 2px; background: #1c2130; border: 1px solid var(--stroke); border-radius: 4px; font-size: 10px; color: var(--text); }
+.layerdots { position: fixed; top: 22px; left: 30px; display: flex; gap: 8px; align-items: center; z-index: 20; font-family: "SF Mono", Consolas, monospace; font-size: 11px; color: var(--muted); }
+.layerdots .dot { width: 9px; height: 9px; border-radius: 50%; background: #2a3040; border: 1px solid #3a4050; }
+.layerdots .dot.on { background: var(--guard); border-color: var(--guard); box-shadow: 0 0 10px rgba(255,90,77,0.6); }
+</style>
+</head>
+<body class="title-mode">
+<div class="stage">
+
+  <div class="title-wrap">
+    <div class="eyebrow">Layer 3</div>
+    <h1>The Safety Net</h1>
+    <div class="sub">semantic guardrails &amp; human escalation &nbsp;·&nbsp; guardrails.py</div>
+  </div>
+
+  <!-- Pre-call block -->
+  <div class="precall" id="precall">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg>
+    <div class="pc-txt"><b>Before the call</b> — an active grievance on file blocks it from ever being dialed.</div>
+  </div>
+
+  <!-- Guardrail shield -->
+  <div class="shield" id="shield"><div class="shield-net"></div><div class="scanline"></div></div>
+  <div class="shield-label" id="shieldlabel">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5 4.5 6v6c0 4.5 3.2 7.5 7.5 9 4.3-1.5 7.5-4.5 7.5-9V6L12 2.5Z"/><path d="M9 12.2l2.1 2.1L15.2 10"/></svg>
+    Guardrails
+  </div>
+
+  <!-- Scanner lens -->
+  <div class="lens" id="lens"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></div>
+
+  <!-- Governed core -->
+  <div class="core" id="core">
+    <div class="cicon"><svg viewBox="0 0 32 32" fill="none" stroke="#f4d35e" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="7" width="18" height="18" rx="3.5"/><circle cx="16" cy="16" r="3" fill="#f4d35e" stroke="none"/><path d="M12 7V3.5M20 7V3.5M12 28.5V25M20 28.5V25M7 12H3.5M7 20H3.5M28.5 12H25M28.5 20H25"/></svg></div>
+    <div><div class="cname">Governed Agent</div><div class="csub">LLM + Prompt + State Machine</div></div>
+  </div>
+
+  <!-- Borrower + utterance -->
+  <div class="borrower" id="borrower">
+    <div class="bcirc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg></div>
+    <div class="blabel">Borrower</div>
+  </div>
+  <div class="utter" id="utter">"I <b>lost my job</b>, I can't pay this…"</div>
+
+  <!-- Watch-list -->
+  <div class="wl-title" id="wltitle">monitored on every turn &nbsp;·&nbsp; any match trips the brake</div>
+  <div class="tpill" id="t1" style="left:47px;"><div class="tp-head"><span class="tp-dot" style="background:#f4b13d;"></span>Dispute</div><div class="tp-ex">"already paid"</div></div>
+  <div class="tpill" id="t2" style="left:239px;"><div class="tp-head"><span class="tp-dot" style="background:#f4b13d;"></span>Hardship</div><div class="tp-ex">"lost my job"</div></div>
+  <div class="tpill" id="t3" style="left:431px;"><div class="tp-head"><span class="tp-dot" style="background:#3d7bff;"></span>Wants a human</div><div class="tp-ex">"escalate"</div></div>
+  <div class="tpill" id="t4" style="left:623px;"><div class="tp-head"><span class="tp-dot" style="background:#ff5a4d;"></span>Stop calling</div><div class="tp-ex">"opt out"</div></div>
+  <div class="tpill" id="t5" style="left:815px;"><div class="tp-head"><span class="tp-dot" style="background:#c77dff;"></span>Wrong person</div><div class="tp-ex">"wrong number"</div></div>
+  <div class="tpill" id="t6" style="left:1007px;"><div class="tp-head"><span class="tp-dot" style="background:#ff5a4d;"></span>Prohibited <span class="tp-sub">· agent</span></div><div class="tp-ex">"legal action"</div></div>
+
+  <!-- Emergency brake -->
+  <div class="brake" id="brake">
+    <div class="bk-head"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v5M12 16.5v.01"/><path d="M10.3 3.3 2.5 17a2 2 0 0 0 1.7 3h15.6a2 2 0 0 0 1.7-3L13.7 3.3a2 2 0 0 0-3.4 0Z"/></svg>Emergency brake</div>
+    <div class="bk-sub">The agent <b>stops generating</b> the payment flow instantly.</div>
+  </div>
+
+  <!-- Escalation outcomes -->
+  <div class="ochip" id="o1" style="top:294px;">
+    <div class="oc-head"><svg viewBox="0 0 24 24" fill="none" stroke="#7ea6ff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M16 3.7 20 7l-4 3.3"/></svg>Human handoff</div>
+    <div class="oc-sub">SIP REFER &rarr; live agent</div>
+  </div>
+  <div class="ochip" id="o2" style="top:372px;">
+    <div class="oc-head"><svg viewBox="0 0 24 24" fill="none" stroke="#7ef0b0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5C4 5 5 4 6.5 4h1c.6 0 1.1.4 1.3 1l.9 2.7c.2.5 0 1.1-.4 1.5l-1 .9a11 11 0 0 0 5 5l.9-1c.4-.4 1-.6 1.5-.4l2.7.9c.6.2 1 .7 1 1.3v1C20 19 19 20 17.5 20 10 20 4 14 4 6.5Z"/></svg>End gracefully</div>
+    <div class="oc-sub">polite close, logged</div>
+  </div>
+  <div class="mapnote" id="mapnote"><b>dispute</b> &rarr; create ticket<br><b>hardship</b> &rarr; flag for callback<br><b>wrong person</b> &rarr; end, amount never disclosed</div>
+
+  <!-- Arrows -->
+  <svg class="arrows" viewBox="0 0 1240 760">
+    <defs>
+      <marker id="m-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#ff5a4d"/></marker>
+      <marker id="m-grey" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#6a7085"/></marker>
+    </defs>
+    <path class="sarrow grey" id="a-utter" d="M 140 260 L 388 262" marker-end="url(#m-grey)"/>
+    <text class="slabel" id="l-utter" x="252" y="244" text-anchor="middle">every utterance</text>
+
+    <path class="sarrow red dash" id="a-out" d="M 595 239 L 595 168" marker-end="url(#m-red)"/>
+    <text class="slabel red" id="l-out" x="688" y="200" text-anchor="start">+ the agent's own words</text>
+
+    <path class="sarrow red" id="a-brake" d="M 810 262 C 846 246, 868 224, 884 216" marker-end="url(#m-red)"/>
+    <text class="slabel red" id="l-brake" x="856" y="238" text-anchor="middle">trigger!</text>
+
+    <path class="sarrow red" id="a-o1" d="M 982 248 L 982 290" marker-end="url(#m-red)"/>
+    <path class="sarrow red" id="a-o2" d="M 1000 248 C 1084 282, 1084 344, 1014 372" marker-end="url(#m-red)"/>
+  </svg>
+
+  <div class="caption" id="caption"></div>
+
+</div>
+
+<div class="layerdots"><span>layer</span><span class="dot"></span><span class="dot"></span><span class="dot on"></span></div>
+<button class="fs-btn" id="fsBtn" title="Enter fullscreen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+<div class="indicator"><div class="ind-main"><span class="ind-num" id="stepNum">0</span><span class="ind-sep">&middot;</span><span class="ind-title" id="stepTitle">The safety net</span></div><div class="ind-bar"><div class="ind-fill" id="stepBar"></div></div></div>
+<div class="help"><kbd>&larr;</kbd><kbd>&rarr;</kbd> step &middot; <kbd>F</kbd> fullscreen</div>
+
+<script>
+(function() {
+  const TOTAL = 8;
+  const STEP_TITLES = ['The safety net','Wrapped in guardrails','Every utterance scanned','The watch-list','Screening the agent too','Emergency brake','Escalation protocol','Pre-call block'];
+  const CAPTIONS = [
+    '',
+    'Even locked into a workflow, the real world is messy. Layer 3 wraps the agent in <b>guardrails</b> — a constant safety net.',
+    '<b>Every utterance</b> is scanned the moment it\'s transcribed, before the agent ever acts on it.',
+    'It watches for <span class="rd">high-risk intents</span> — dispute, hardship, a request for a human, or "stop calling".',
+    'It even screens the <b>agent\'s own words</b>, catching prohibited collection language before it is spoken.',
+    'One trigger and it slams the <span class="rd">emergency brake</span> — the agent stops generating immediately.',
+    'Then the <b>escalation protocol</b> takes over — a graceful handoff to a human, or a polite end to the call.',
+    'And some calls never begin: an <b>active grievance</b> on file blocks the call before it is even dialed.'
+  ];
+  let step = 0;
+
+  document.querySelectorAll('.sarrow').forEach(a => { try { const l = Math.ceil(a.getTotalLength()); if (l>0) a.style.setProperty('--len', l); } catch(e){} });
+  const $ = id => document.getElementById(id);
+  function cls(el, name, on) { if (el) el.classList.toggle(name, on); }
+
+  function render() {
+    const titleMode = step === 0;
+    document.body.classList.toggle('title-mode', titleMode);
+
+    cls($('shield'), 'show', step >= 1);
+    cls($('shieldlabel'), 'show', step >= 1);
+    cls($('core'), 'show', step >= 1);
+
+    cls($('borrower'), 'show', step >= 2);
+    cls($('utter'), 'show', step >= 2);
+    cls($('lens'), 'show', step >= 2);
+    cls($('a-utter'), 'on', step >= 2);
+    cls($('l-utter'), 'on', step >= 2);
+
+    const wl = step >= 3;
+    cls($('wltitle'), 'show', wl);
+    ['t1','t2','t3','t4','t5','t6'].forEach(id => cls($(id), 'show', wl));
+
+    const scr = step >= 4;
+    cls($('a-out'), 'on', scr);
+    cls($('l-out'), 'on', scr);
+    cls($('t6'), 'flash', step === 4);
+
+    const brk = step >= 5;
+    cls($('brake'), 'show', brk);
+    cls($('brake'), 'flash', step === 5);
+    cls($('shield'), 'flash', step === 5);
+    cls($('a-brake'), 'on', brk);
+    cls($('l-brake'), 'on', brk);
+    cls($('t2'), 'flash', step === 5);
+
+    const esc = step >= 6;
+    ['o1','o2'].forEach(id => cls($(id), 'show', esc));
+    cls($('a-o1'), 'on', esc);
+    cls($('a-o2'), 'on', esc);
+    cls($('mapnote'), 'show', esc);
+
+    cls($('precall'), 'show', step >= 7);
+
+    const cap = $('caption');
+    cap.innerHTML = CAPTIONS[step] || '';
+    cls(cap, 'show', !titleMode && !!CAPTIONS[step]);
+
+    $('stepNum').textContent = step;
+    $('stepTitle').textContent = STEP_TITLES[step];
+    $('stepBar').style.width = (step/(TOTAL-1)*100) + '%';
+  }
+
+  function next(){ if(step<TOTAL-1){step++;render();} }
+  function prev(){ if(step>0){step--;render();} }
+  document.addEventListener('keydown', e => {
+    if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();next();}
+    else if(e.key==='ArrowLeft'){e.preventDefault();prev();}
+    else if(e.key==='Home'){e.preventDefault();step=0;render();}
+    else if(e.key==='End'){e.preventDefault();step=TOTAL-1;render();}
+    else if(e.key==='f'||e.key==='F'){e.preventDefault();toggleFs();}
+  });
+  const fsBtn = $('fsBtn');
+  function toggleFs(){ const r = document.documentElement.requestFullscreen||document.documentElement.webkitRequestFullscreen; if(r && !document.fullscreenElement && !document.webkitFullscreenElement) r.call(document.documentElement); else if(document.exitFullscreen) document.exitFullscreen(); }
+  fsBtn.addEventListener('click', toggleFs);
+  function onFs(){ document.body.classList.toggle('is-fs', !!(document.fullscreenElement||document.webkitFullscreenElement)); }
+  document.addEventListener('fullscreenchange', onFs); document.addEventListener('webkitfullscreenchange', onFs);
+  render();
+})();
+</script>
+</body>
+</html>

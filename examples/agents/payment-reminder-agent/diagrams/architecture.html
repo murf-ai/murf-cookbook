@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Payment Reminder Voice Agent — Architecture</title>
+<style>
+:root {
+  --bg: #0b0d12;
+  --text: #e6e8ef;
+  --muted: #8b91a3;
+  --stroke: #2a3040;
+  --twilio: #f22f46;
+  --livekit: #3d7bff;
+  --stt: #13ef93;
+  --llm: #f4d35e;
+  --murf: #7a5cff;
+  --prompt: #c77dff;
+  --state: #4ad1e8;
+  --guard: #ff5a4d;
+  --agent: #9aa4c0;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  min-height: 100vh;
+  background: radial-gradient(ellipse at 58% 46%, #161b27 0%, #0a0c10 72%);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+  overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.stage { position: relative; width: 1240px; height: 760px; flex-shrink: 0; }
+
+/* ── Title ─────────────────────────────────────────────── */
+.title-wrap {
+  position: absolute; top: 300px; left: 0; right: 0; text-align: center;
+  transition: opacity 700ms var(--ease), transform 800ms var(--ease);
+  pointer-events: none; z-index: 10;
+}
+.title-wrap h1 {
+  margin: 0; font-size: 58px; font-weight: 700; letter-spacing: -1.8px;
+  background: linear-gradient(95deg, #ffffff 0%, #ff5a4d 34%, #c77dff 66%, #7a5cff 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  animation: titleShimmer 14s ease-in-out infinite;
+}
+@keyframes titleShimmer { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+.title-wrap .sub {
+  margin-top: 20px; color: var(--muted);
+  font-family: "SF Mono", Consolas, monospace; font-size: 13px; letter-spacing: 3px; text-transform: lowercase;
+}
+body:not(.title-mode) .title-wrap { opacity: 0; transform: translateY(-18px); }
+
+/* ── Nodes ─────────────────────────────────────────────── */
+.node {
+  position: absolute; left: 0; top: 0;
+  transform: translate(var(--ax, 0px), var(--ay, 0px));
+  transition: transform 900ms var(--ease), opacity 700ms var(--ease), filter 500ms var(--ease);
+  opacity: 0; pointer-events: none; will-change: transform, opacity;
+}
+.node.visible { opacity: 1; pointer-events: auto; }
+.node .badge { transform: translateY(10px); transition: transform 700ms var(--ease) 120ms, box-shadow 280ms ease, border-color 280ms ease; }
+.node.visible .badge {
+  transform: translateY(0);
+  animation: badgeFloat 5.5s ease-in-out infinite;
+  animation-delay: calc(1s + var(--stagger, 0s));
+}
+.node-agent { --stagger: 0.2s; }
+.node-twilio { --stagger: 0s; }
+.node-stt { --stagger: 1s; }
+.node-llm { --stagger: 0.3s; }
+.node-murf { --stagger: 1.4s; }
+.node-user { --stagger: 0.8s; }
+@keyframes badgeFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+.node.visible .badge:hover {
+  animation-play-state: paused;
+  transform: translateY(-6px) scale(1.035);
+  border-color: var(--node-accent, #4a5268);
+  box-shadow: 0 18px 44px rgba(0,0,0,0.7), 0 0 40px var(--node-glow, rgba(255,255,255,0.15));
+  cursor: help;
+}
+.node-agent { --node-accent: var(--agent); --node-glow: rgba(154,164,192,0.24); }
+.node-twilio { --node-accent: var(--twilio); --node-glow: rgba(242,47,70,0.30); }
+.node-stt { --node-accent: var(--stt); --node-glow: rgba(19,239,147,0.28); }
+.node-llm { --node-accent: var(--llm); --node-glow: rgba(244,211,94,0.30); }
+.node-murf { --node-accent: var(--murf); --node-glow: rgba(122,92,255,0.32); }
+.node-user { --node-accent: #7b8499; --node-glow: rgba(230,232,239,0.18); }
+
+.badge {
+  position: relative;
+  background: linear-gradient(180deg, rgba(26,30,42,0.98) 0%, rgba(16,19,28,0.98) 100%);
+  border: 1px solid var(--stroke); border-radius: 13px;
+  padding: 11px 16px 11px 13px;
+  display: inline-flex; align-items: center; gap: 11px;
+  font-weight: 600; font-size: 15.5px; white-space: nowrap;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.55), 0 1px 0 rgba(255,255,255,0.04) inset;
+}
+.badge .brand-name { display: inline-flex; flex-direction: column; gap: 2px; line-height: 1.15; }
+.badge .sublabel {
+  font-size: 10px; color: var(--muted);
+  font-family: "SF Mono", Consolas, monospace; font-weight: 500; letter-spacing: 0.2px;
+}
+.node-agent .badge { border-color: rgba(154,164,192,0.5); }
+.node-twilio .badge { border-color: rgba(242,47,70,0.5); }
+.node-stt .badge { border-color: rgba(19,239,147,0.45); }
+.node-llm .badge { border-color: rgba(244,211,94,0.5); }
+.node-murf .badge { border-color: rgba(122,92,255,0.5); }
+
+.logo { position: relative; width: 28px; height: 28px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; }
+.logo img { width: 100%; height: 100%; object-fit: contain; }
+.logo svg { width: 100%; height: 100%; display: block; }
+.logo .fallback { position: absolute; inset: 0; display: none; }
+.logo.img-failed .fallback { display: flex; }
+.logo.img-failed img { display: none; }
+
+.node-user .badge { border-radius: 50%; padding: 15px; width: 72px; height: 72px; justify-content: center; border-color: var(--stroke); }
+.node-user svg { width: 36px; height: 36px; color: var(--text); display: block; }
+.node-user .user-label { position: absolute; left: 50%; bottom: -24px; transform: translateX(-50%); font-size: 12.5px; color: var(--muted); font-weight: 500; white-space: nowrap; }
+
+/* ── Tooltips ──────────────────────────────────────────── */
+.tooltip {
+  position: absolute; bottom: calc(100% + 16px); left: 50%;
+  transform: translateX(-50%) translateY(8px);
+  background: linear-gradient(180deg, #161b27 0%, #0e1219 100%);
+  border: 1px solid var(--stroke); border-radius: 12px;
+  padding: 11px 14px 12px; width: 242px;
+  font-size: 11.5px; line-height: 1.55; color: #cdd1dc;
+  opacity: 0; pointer-events: none;
+  transition: opacity 280ms var(--ease), transform 280ms var(--ease);
+  z-index: 1000; text-align: left; font-weight: 400;
+  box-shadow: 0 18px 44px rgba(0,0,0,0.75);
+}
+.tooltip .tt-title { display: block; font-weight: 700; font-size: 12px; color: var(--node-accent, #fff); margin-bottom: 4px; }
+.tooltip::after { content: ''; position: absolute; top: 100%; left: 50%; margin-left: -7px; border: 7px solid transparent; border-top-color: var(--stroke); }
+.node.visible:hover .tooltip,
+.layer.visible .layer-label:hover .tooltip { opacity: 1; transform: translateX(-50%) translateY(0); transition-delay: 120ms; }
+
+/* ── LiveKit infrastructure box ────────────────────────── */
+.infra {
+  position: absolute;
+  border: 1.5px solid rgba(61,123,255,0.4); border-radius: 24px;
+  background: linear-gradient(180deg, rgba(61,123,255,0.05) 0%, rgba(61,123,255,0.014) 100%);
+  box-shadow: 0 0 90px rgba(61,123,255,0.12), inset 0 0 70px rgba(61,123,255,0.028);
+  transform: scale(0.965); transform-origin: center;
+  transition: opacity 800ms var(--ease), transform 900ms var(--ease), border-color 400ms ease, box-shadow 400ms ease;
+  opacity: 0; pointer-events: none;
+}
+.infra.visible { opacity: 1; transform: scale(1); }
+.infra.visible .infra-head { pointer-events: auto; cursor: help; }
+.infra-head { position: absolute; top: 15px; left: 20px; display: flex; align-items: center; gap: 9px; padding: 4px 6px; border-radius: 8px; transition: background 220ms ease; --node-accent: var(--livekit); }
+.infra-head:hover { background: rgba(61,123,255,0.08); }
+.infra-head .logo { width: 22px; height: 22px; }
+.infra-label { font-weight: 700; font-size: 16px; color: #6b9bff; letter-spacing: 0.2px; transition: text-shadow 220ms ease; }
+.infra-head:hover .infra-label { text-shadow: 0 0 14px rgba(61,123,255,0.5); }
+.infra-sub { position: absolute; top: 41px; left: 24px; font-family: "SF Mono", Consolas, monospace; font-size: 10px; color: var(--muted); letter-spacing: 0.4px; }
+.infra-tooltip { bottom: auto; top: calc(100% + 14px); left: 0; transform: translateY(8px); }
+.infra-tooltip::after { top: auto; bottom: 100%; border-top-color: transparent; border-bottom-color: var(--stroke); left: 26px; margin-left: 0; }
+.infra-head:hover .infra-tooltip { opacity: 1; transform: translateY(0); transition-delay: 120ms; }
+.infra.current-step { border-color: rgba(61,123,255,0.82); box-shadow: 0 0 130px rgba(61,123,255,0.24), inset 0 0 70px rgba(61,123,255,0.05); }
+
+/* ── Concentric reasoning layers ───────────────────────── */
+.layer {
+  position: absolute; border-radius: 22px;
+  border: 1.5px solid var(--layer-accent, #444);
+  transform: scale(0.9); transform-origin: center;
+  transition: opacity 850ms var(--ease), transform 900ms var(--ease), border-color 400ms ease, box-shadow 400ms ease;
+  opacity: 0; pointer-events: none;
+}
+.layer.visible { opacity: 1; transform: scale(1); }
+.layer.visible .layer-label { pointer-events: auto; cursor: help; }
+.layer-prompt { --layer-accent: rgba(199,125,255,0.46); background: linear-gradient(180deg, rgba(199,125,255,0.08) 0%, rgba(199,125,255,0.022) 100%); box-shadow: 0 0 55px rgba(199,125,255,0.14), inset 0 0 44px rgba(199,125,255,0.04); }
+.layer-state { --layer-accent: rgba(74,209,232,0.42); background: linear-gradient(180deg, rgba(74,209,232,0.05) 0%, rgba(74,209,232,0.012) 100%); box-shadow: 0 0 64px rgba(74,209,232,0.11), inset 0 0 54px rgba(74,209,232,0.028); }
+.layer-guard { --layer-accent: rgba(255,90,77,0.48); background: linear-gradient(180deg, rgba(255,90,77,0.055) 0%, rgba(255,90,77,0.014) 100%); box-shadow: 0 0 84px rgba(255,90,77,0.14), inset 0 0 64px rgba(255,90,77,0.03); }
+
+.layer-label {
+  position: absolute; top: 0; left: 50%; transform: translate(-50%, -50%);
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 15px; border-radius: 20px;
+  background: #0c0f16; border: 1px solid var(--layer-accent);
+  font-weight: 700; font-size: 13px; letter-spacing: 0.4px; white-space: nowrap;
+  color: var(--label-color, #fff); box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+}
+.layer-label svg { width: 15px; height: 15px; display: block; }
+.layer-label .lbl-sub { font-family: "SF Mono", Consolas, monospace; font-size: 9.5px; font-weight: 500; color: var(--muted); letter-spacing: 0.3px; }
+.layer-prompt .layer-label { --label-color: #d9b3ff; --node-accent: var(--prompt); }
+.layer-state .layer-label { --label-color: #a6ecf7; --node-accent: var(--state); }
+.layer-guard .layer-label { --label-color: #ff9d94; --node-accent: var(--guard); }
+.layer-label .tooltip { bottom: auto; top: calc(100% + 14px); }
+.layer-label .tooltip::after { top: auto; bottom: 100%; border-top-color: transparent; border-bottom-color: var(--stroke); }
+
+.layer.current-step.layer-prompt { --layer-accent: rgba(199,125,255,0.9); box-shadow: 0 0 84px rgba(199,125,255,0.3), inset 0 0 44px rgba(199,125,255,0.06); }
+.layer.current-step.layer-state { --layer-accent: rgba(74,209,232,0.82); box-shadow: 0 0 100px rgba(74,209,232,0.24), inset 0 0 54px rgba(74,209,232,0.05); }
+.layer.current-step.layer-guard { --layer-accent: rgba(255,90,77,0.88); box-shadow: 0 0 140px rgba(255,90,77,0.26), inset 0 0 64px rgba(255,90,77,0.05); }
+
+.node.visible.dimmed .badge { filter: brightness(0.74) saturate(0.75); }
+.node.visible.dimmed .badge:hover { filter: brightness(1) saturate(1); }
+.node.visible.current-step .badge { border-color: var(--node-accent); box-shadow: 0 14px 36px rgba(0,0,0,0.6), 0 0 44px var(--node-glow); }
+.layer.visible.dimmed { opacity: 0.66; }
+
+/* ── Arrows ────────────────────────────────────────────── */
+.arrows { position: absolute; top: 0; left: 0; width: 1240px; height: 760px; pointer-events: none; overflow: visible; }
+.arrow {
+  fill: none; stroke: #6a7085; stroke-width: 1.8; opacity: 0;
+  stroke-dasharray: var(--len, 1200); stroke-dashoffset: var(--len, 1200);
+  transition: opacity 250ms ease, stroke-dashoffset 950ms var(--ease) 120ms, stroke 400ms ease;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.arrow.visible { opacity: 1; stroke-dashoffset: 0; }
+.arrow.accent-twilio { stroke: var(--twilio); }
+.arrow.accent-livekit { stroke: var(--livekit); }
+.arrow.accent-stt { stroke: var(--stt); }
+.arrow.accent-murf { stroke: var(--murf); }
+.arrow.dashed { stroke-dasharray: 5 6; stroke-dashoffset: 0; transition: opacity 600ms ease 300ms, stroke 400ms ease; }
+.arrow.visible.dimmed { opacity: 0.45; }
+.arrow-label.visible.dimmed { opacity: 0.45; }
+.arrow-label { fill: var(--muted); font-family: "SF Mono", Consolas, monospace; font-size: 11px; opacity: 0; transition: opacity 700ms var(--ease) 450ms; }
+.arrow-label.visible { opacity: 1; }
+
+.soundwave { opacity: 0; transition: opacity 500ms var(--ease) 500ms; pointer-events: none; filter: drop-shadow(0 0 6px rgba(122,92,255,0.55)); }
+.soundwave.visible { opacity: 1; }
+.soundwave .wb { transform-box: fill-box; transform-origin: center; animation: swPulse 0.95s ease-in-out infinite; animation-play-state: paused; }
+.soundwave.visible .wb { animation-play-state: running; }
+.soundwave .wb:nth-child(1) { animation-delay: 0s; }
+.soundwave .wb:nth-child(2) { animation-delay: 0.11s; }
+.soundwave .wb:nth-child(3) { animation-delay: 0.22s; }
+.soundwave .wb:nth-child(4) { animation-delay: 0.33s; }
+.soundwave .wb:nth-child(5) { animation-delay: 0.2s; }
+.soundwave .wb:nth-child(6) { animation-delay: 0.08s; }
+@keyframes swPulse { 0%, 100% { transform: scaleY(0.2); } 50% { transform: scaleY(1.1); } }
+
+/* ── Chrome ────────────────────────────────────────────── */
+.indicator { position: fixed; bottom: 28px; right: 30px; color: var(--muted); font-size: 13px; z-index: 20; min-width: 250px; }
+.ind-main { display: flex; align-items: baseline; gap: 8px; justify-content: flex-end; }
+.ind-num { color: var(--text); font-family: "SF Mono", Consolas, monospace; font-weight: 700; font-size: 13px; letter-spacing: 0.5px; }
+.ind-sep { color: var(--muted); opacity: 0.45; }
+.ind-title { color: var(--text); font-weight: 500; font-size: 14px; }
+.ind-bar { margin-top: 8px; height: 2px; background: rgba(255,255,255,0.07); border-radius: 2px; overflow: hidden; }
+.ind-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #ff5a4d 0%, #c77dff 55%, #7a5cff 100%); transition: width 600ms var(--ease); border-radius: 2px; }
+
+.fs-btn {
+  position: fixed; top: 22px; right: 26px;
+  background: rgba(20,24,33,0.7); border: 1px solid var(--stroke); color: var(--muted);
+  width: 38px; height: 38px; border-radius: 9px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; padding: 0;
+  transition: color 200ms ease, border-color 200ms ease, background 200ms ease, transform 200ms ease;
+  z-index: 30; backdrop-filter: blur(6px);
+}
+.fs-btn svg { width: 16px; height: 16px; }
+.fs-btn:hover { color: var(--text); border-color: rgba(199,125,255,0.5); background: rgba(30,36,52,0.9); transform: translateY(-1px); }
+body.is-fs .fs-btn { display: none; }
+body.is-fs { cursor: none; }
+body.is-fs:hover { cursor: default; }
+.help { position: fixed; bottom: 26px; left: 30px; font-family: "SF Mono", Consolas, monospace; color: var(--muted); font-size: 11px; opacity: 0.6; z-index: 20; }
+.help kbd { display: inline-block; padding: 2px 7px; margin: 0 2px; background: #1c2130; border: 1px solid var(--stroke); border-radius: 4px; font-size: 10px; color: var(--text); }
+</style>
+</head>
+<body class="title-mode">
+<div class="stage">
+
+  <div class="title-wrap">
+    <h1>Payment Reminder Voice Agent</h1>
+    <div class="sub">a compliant outbound calling agent</div>
+  </div>
+
+  <!-- ── LiveKit infrastructure box ─────────────────────────────── -->
+  <div class="infra" data-step="2" style="left:420px; top:104px; width:770px; height:576px;">
+    <div class="infra-head">
+      <div class="logo">
+        <img src="https://cdn.simpleicons.org/livekit/3D7BFF" alt="" onerror="this.parentNode.classList.add('img-failed')">
+        <div class="fallback"><svg viewBox="0 0 32 32"><rect x="5" y="13" width="4" height="6" rx="1" fill="#3d7bff"/><rect x="12" y="8" width="4" height="16" rx="1" fill="#3d7bff"/><rect x="19" y="11" width="4" height="10" rx="1" fill="#3d7bff"/><rect x="26" y="14" width="3.5" height="4" rx="1" fill="#3d7bff"/></svg></div>
+      </div>
+      <div class="infra-label">LiveKit Agents</div>
+      <div class="tooltip infra-tooltip"><span class="tt-title">LiveKit · infrastructure</span>The real-time transport and agent runtime. It bridges the phone call into a room, hosts the agent worker, and runs the full STT&rarr;LLM&rarr;TTS session — everything inside this box lives on LiveKit.</div>
+    </div>
+    <div class="infra-sub">infrastructure &middot; transport &amp; session</div>
+  </div>
+
+  <!-- ── Concentric reasoning layers (around the LLM) ───────────── -->
+  <div class="layer layer-guard" data-step="8" style="left:649px; top:178px; width:518px; height:452px;">
+    <div class="layer-label">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5 4.5 6v6c0 4.5 3.2 7.5 7.5 9 4.3-1.5 7.5-4.5 7.5-9V6L12 2.5Z"/><path d="M9 12.2l2.1 2.1L15.2 10"/></svg>
+      Guardrails <span class="lbl-sub">guardrails.py</span>
+      <div class="tooltip"><span class="tt-title">Guardrails · compliance shell</span>Wraps the entire reasoning core. Blocks the call pre-flight on an active grievance, and screens every utterance — dispute, hardship, wrong person, "stop calling", human requests — halting the payment flow and catching prohibited language before it is spoken.</div>
+    </div>
+  </div>
+
+  <div class="layer layer-state" data-step="7" style="left:713px; top:242px; width:390px; height:324px;">
+    <div class="layer-label">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="6" r="2.4"/><circle cx="18.5" cy="6" r="2.4"/><circle cx="12" cy="18" r="2.4"/><path d="M7.7 7.2 16.3 16.8M16.3 7.2 7.7 16.8M8 6h8"/></svg>
+      State Machine <span class="lbl-sub">state_machine.py</span>
+      <div class="tooltip"><span class="tt-title">State Machine · call flow</span>Twelve call states from opening disclosure through identity check, payment context, promise-to-pay and handoff. Each state defines exactly which actions and tools the model is allowed to use next.</div>
+    </div>
+  </div>
+
+  <div class="layer layer-prompt" data-step="6" style="left:777px; top:306px; width:262px; height:196px;">
+    <div class="layer-label">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h14M5 10h9M5 15h11M5 20h6"/></svg>
+      Prompt
+      <div class="tooltip"><span class="tt-title">Prompt · system instructions</span>Rebuilt for the current state on every turn. Injects the borrower context and the state's allowed actions into the system prompt so the model only ever knows what it is permitted to do right now.</div>
+    </div>
+  </div>
+
+  <!-- ── Arrows ─────────────────────────────────────────────────── -->
+  <svg class="arrows" viewBox="0 0 1240 760">
+    <defs>
+      <marker id="ah-twilio" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#f22f46"/></marker>
+      <marker id="ah-livekit" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#3d7bff"/></marker>
+      <marker id="ah-stt" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#13ef93"/></marker>
+      <marker id="ah-murf" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#7a5cff"/></marker>
+    </defs>
+
+    <!-- Agent places the call -> out through Twilio (middle lane) -->
+    <path class="arrow accent-livekit" data-step="2" d="M 452 226 C 408 258, 350 330, 302 356" marker-end="url(#ah-twilio)"/>
+    <text class="arrow-label" data-step="2" x="392" y="300" text-anchor="middle">places call</text>
+
+    <!-- Twilio dials out over PSTN -> Borrower -->
+    <path class="arrow accent-twilio" data-step="2" d="M 206 390 L 142 385" marker-end="url(#ah-twilio)"/>
+    <text class="arrow-label" data-step="2" x="176" y="372" text-anchor="middle">dials out</text>
+
+    <!-- Borrower speaks -> STT (top lane, into the box) -->
+    <path class="arrow accent-stt" data-step="3" d="M 124 360 C 240 302, 340 332, 436 360" marker-end="url(#ah-stt)"/>
+    <text class="arrow-label" data-step="3" x="252" y="308" text-anchor="middle">borrower audio</text>
+
+    <!-- STT -> LLM (transcript, into the layers) -->
+    <path class="arrow accent-stt" data-step="4" d="M 622 364 C 702 376, 772 398, 831 404" marker-end="url(#ah-stt)"/>
+    <text class="arrow-label" data-step="4" x="708" y="372" text-anchor="middle">transcript</text>
+
+    <!-- LLM -> TTS (reply text, back out of the layers) -->
+    <path class="arrow accent-murf" data-step="5" d="M 860 430 C 780 484, 700 536, 594 536" marker-end="url(#ah-murf)"/>
+    <text class="arrow-label" data-step="5" x="712" y="508" text-anchor="middle">reply text</text>
+
+    <!-- TTS -> Borrower (spoken reply, bottom lane) -->
+    <path class="arrow accent-murf dashed" data-step="5" d="M 438 540 C 300 598, 150 468, 104 420" marker-end="url(#ah-murf)"/>
+    <text class="arrow-label" data-step="5" x="238" y="596" text-anchor="middle">spoken reply</text>
+
+    <g class="soundwave" data-step="5">
+      <rect class="wb" x="12" y="372" width="3" height="17" rx="1.5" fill="#7a5cff"/>
+      <rect class="wb" x="20" y="372" width="3" height="17" rx="1.5" fill="#7a5cff"/>
+      <rect class="wb" x="28" y="372" width="3" height="17" rx="1.5" fill="#7a5cff"/>
+      <rect class="wb" x="36" y="372" width="3" height="17" rx="1.5" fill="#7a5cff"/>
+      <rect class="wb" x="44" y="372" width="3" height="17" rx="1.5" fill="#7a5cff"/>
+      <rect class="wb" x="52" y="372" width="3" height="17" rx="1.5" fill="#7a5cff"/>
+    </g>
+  </svg>
+
+  <!-- ── Nodes ──────────────────────────────────────────────────── -->
+  <div class="node node-user" data-step="1" style="--ax:64px; --ay:350px;">
+    <div class="badge">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+      <div class="user-label">Borrower</div>
+    </div>
+    <div class="tooltip"><span class="tt-title">The Borrower</span>The agent dials <em>them</em> — this is an outbound call. They answer, speak, and hear the agent's reply. Identity is verified before any account detail is disclosed.</div>
+  </div>
+
+  <div class="node node-agent" data-step="1" style="--ax:440px; --ay:178px;">
+    <div class="badge">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#c3cbe4" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 8V4.6"/><circle cx="12" cy="3.4" r="1.3" fill="#c3cbe4" stroke="none"/><circle cx="9.2" cy="14" r="1.4" fill="#c3cbe4" stroke="none"/><circle cx="14.8" cy="14" r="1.4" fill="#c3cbe4" stroke="none"/><path d="M2 13v3M22 13v3"/></svg>
+      </div>
+      <span class="brand-name">Payment Agent<span class="sublabel">run.py &middot; worker</span></span>
+    </div>
+    <div class="tooltip"><span class="tt-title">Payment Agent · orchestrator</span>The agent worker (agent.py + run.py) running on LiveKit. It dispatches the outbound call, drives the STT&rarr;LLM&rarr;TTS session, and enforces the state machine and guardrails on every turn.</div>
+  </div>
+
+  <div class="node node-twilio" data-step="2" style="--ax:210px; --ay:356px;">
+    <div class="badge">
+      <div class="logo">
+        <img src="https://cdn.simpleicons.org/twilio/F22F46" alt="" onerror="this.parentNode.classList.add('img-failed')">
+        <div class="fallback"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="none" stroke="#f22f46" stroke-width="3"/><circle cx="11" cy="11" r="3" fill="#f22f46"/><circle cx="21" cy="11" r="3" fill="#f22f46"/><circle cx="11" cy="21" r="3" fill="#f22f46"/><circle cx="21" cy="21" r="3" fill="#f22f46"/></svg></div>
+      </div>
+      <span class="brand-name">Twilio<span class="sublabel">PSTN &middot; SIP</span></span>
+    </div>
+    <div class="tooltip"><span class="tt-title">Twilio · telephony</span>Elastic SIP trunk that carries the outbound call over the PSTN and supplies the caller ID. Also sends post-call WhatsApp confirmations.</div>
+  </div>
+
+  <div class="node node-stt" data-step="3" style="--ax:440px; --ay:336px;">
+    <div class="badge">
+      <div class="logo">
+        <img src="https://cdn.simpleicons.org/deepgram/13EF93" alt="" onerror="this.parentNode.classList.add('img-failed')">
+        <div class="fallback"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="#13ef93"/><path d="M9 16 Q 12.5 10.5, 16 16 T 23 16" stroke="#0a0c10" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg></div>
+      </div>
+      <span class="brand-name">Speech&nbsp;&rarr;&nbsp;Text<span class="sublabel">deepgram &middot; whisper</span></span>
+    </div>
+    <div class="tooltip"><span class="tt-title">STT · speech to text</span>Streaming transcription — Deepgram nova-3 by default, OpenAI Whisper as an alternative. Silero VAD gates the mic so the agent only transcribes real speech.</div>
+  </div>
+
+  <div class="node node-llm" data-step="4" style="--ax:833px; --ay:377px;">
+    <div class="badge">
+      <div class="logo">
+        <img src="https://cdn.simpleicons.org/openai/F4D35E" alt="" onerror="this.parentNode.classList.add('img-failed')">
+        <div class="fallback"><svg viewBox="0 0 32 32" fill="none" stroke="#f4d35e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="7" width="18" height="18" rx="3.5"/><circle cx="16" cy="16" r="3.2" fill="#f4d35e" stroke="none"/><path d="M12 7V3.5M20 7V3.5M12 28.5V25M20 28.5V25M7 12H3.5M7 20H3.5M28.5 12H25M28.5 20H25"/></svg></div>
+      </div>
+      <span class="brand-name">LLM<span class="sublabel">gpt-4o-mini &middot; gemini</span></span>
+    </div>
+    <div class="tooltip"><span class="tt-title">LLM · the reasoning core</span>Reads the transcript, decides which tool to call, and drafts the reply. Pluggable — OpenAI or Gemini via one env var. On its own it is unconstrained; the three layers around it make it compliant.</div>
+  </div>
+
+  <div class="node node-murf" data-step="5" style="--ax:440px; --ay:510px;">
+    <div class="badge">
+      <div class="logo">
+        <svg viewBox="0 0 32 30" xmlns="http://www.w3.org/2000/svg" fill="none">
+          <defs>
+            <radialGradient id="mp0" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(14.75 16.86) rotate(180) scale(20.89 21.01)"><stop offset="0.28" stop-color="#DAABFF"/><stop offset="0.87" stop-color="#735DFF"/></radialGradient>
+            <linearGradient id="mp1" x1="-5.99" y1="11.79" x2="15.02" y2="23.30" gradientUnits="userSpaceOnUse"><stop offset="0.42" stop-color="#C6B2FF"/><stop offset="0.84" stop-color="#735DFF"/></linearGradient>
+            <radialGradient id="mp3" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(16.66 13.14) scale(20.89 21.01)"><stop offset="0.22" stop-color="#FFD522"/><stop offset="0.34" stop-color="#FFAD37"/><stop offset="0.45" stop-color="#FF7E51"/><stop offset="0.54" stop-color="#FF4B6C"/><stop offset="1" stop-color="#C81395"/></radialGradient>
+            <linearGradient id="mp4" x1="15.05" y1="16.25" x2="33.85" y2="13.33" gradientUnits="userSpaceOnUse"><stop offset="0.35" stop-color="#F02173"/><stop offset="0.61" stop-color="#E81DB8"/><stop offset="0.76" stop-color="#C516E1"/><stop offset="1" stop-color="#735DFF"/></linearGradient>
+            <linearGradient id="mp5" x1="10.92" y1="9.54" x2="19.92" y2="9.54" gradientUnits="userSpaceOnUse"><stop stop-color="white"/><stop offset="0.45" stop-color="white" stop-opacity="0.5"/><stop offset="0.96" stop-color="white" stop-opacity="0"/></linearGradient>
+          </defs>
+          <path d="M20.898 20.219L1.925 1.132C1.767 0.974 1.566 0.866 1.347 0.822C1.128 0.779 0.902 0.802 0.696 0.888C0.490 0.974 0.314 1.119 0.190 1.306C0.066 1.492 0 1.711 0 1.936C0 7.240 0.973 15.167 3.869 19.429C7.986 25.489 15.578 26.183 20.898 20.219Z" fill="url(#mp0)"/>
+          <path d="M0 25.783C0 26.422 0.144 27.053 0.422 27.628C0.700 28.203 1.104 28.707 1.605 29.102C2.105 29.496 2.688 29.771 3.309 29.906C3.931 30.041 4.575 30.031 5.192 29.879C10.713 28.509 16.380 25.711 20.974 20.298L20.898 20.221C15.578 26.185 7.986 25.491 3.869 19.431C0.973 15.168 0 7.242 0 1.938V25.783Z" fill="url(#mp1)"/>
+          <path d="M10.516 9.783L29.489 28.871C29.647 29.029 29.848 29.137 30.067 29.180C30.285 29.224 30.512 29.201 30.718 29.115C30.924 29.029 31.100 28.884 31.224 28.697C31.348 28.511 31.414 28.291 31.414 28.067C31.414 22.763 30.440 14.836 27.545 10.574C23.428 4.513 15.836 3.820 10.516 9.783Z" fill="url(#mp3)"/>
+          <path d="M31.420 4.222C31.420 3.582 31.276 2.951 30.998 2.376C30.720 1.801 30.315 1.297 29.815 0.903C29.315 0.508 28.732 0.233 28.110 0.098C27.489 -0.036 26.845 -0.027 26.228 0.126C20.706 1.495 15.039 4.294 10.445 9.706L10.522 9.783C15.842 3.820 23.434 4.513 27.551 10.574C30.446 14.836 31.420 22.763 31.420 28.067V4.222Z" fill="url(#mp4)"/>
+          <path d="M11.313 8.958C11.313 8.958 16.672 3.127 23.731 6.936L17.275 13.428L11.313 8.958Z" fill="url(#mp5)"/>
+          <circle cx="15.71" cy="15.00" r="7.45" fill="white"/>
+        </svg>
+      </div>
+      <span class="brand-name">Murf<span class="sublabel">text &rarr; speech</span></span>
+    </div>
+    <div class="tooltip"><span class="tt-title">Murf · text to speech</span>Streams the LLM's reply text into natural-sounding speech in the configured agent voice, sent back through LiveKit and Twilio to the borrower.</div>
+  </div>
+
+</div>
+
+<button class="fs-btn" id="fsBtn" title="Enter fullscreen" aria-label="Enter fullscreen">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+</button>
+<div class="indicator">
+  <div class="ind-main">
+    <span class="ind-num" id="stepNum">0</span>
+    <span class="ind-sep">&middot;</span>
+    <span class="ind-title" id="stepTitle">The stack</span>
+  </div>
+  <div class="ind-bar"><div class="ind-fill" id="stepBar"></div></div>
+</div>
+<div class="help"><kbd>&larr;</kbd><kbd>&rarr;</kbd> step &middot; <kbd>F</kbd> fullscreen</div>
+
+<script>
+(function() {
+  const TOTAL = 9;
+  const STEP_TITLES = [
+    'The stack',
+    'The two parties',
+    'Placing the call',
+    'Speech to text',
+    'The reasoning core',
+    'Speech back out',
+    'Layer 1 · Prompt',
+    'Layer 2 · State machine',
+    'Layer 3 · Guardrails'
+  ];
+  let step = 0;
+
+  document.querySelectorAll('.arrow:not(.dashed)').forEach(arrow => {
+    try {
+      const len = Math.ceil(arrow.getTotalLength());
+      if (len > 0) arrow.style.setProperty('--len', len);
+    } catch (e) {}
+  });
+
+  function render() {
+    const titleMode = step === 0;
+    document.body.classList.toggle('title-mode', titleMode);
+
+    document.querySelectorAll('.node, .layer').forEach(el => {
+      const s = parseInt(el.dataset.step, 10);
+      const visible = !titleMode && step >= s;
+      el.classList.toggle('visible', visible);
+      el.classList.toggle('current-step', !titleMode && s === step);
+      el.classList.toggle('dimmed', visible && s < step);
+    });
+
+    document.querySelectorAll('.infra').forEach(el => {
+      const s = parseInt(el.dataset.step, 10);
+      el.classList.toggle('visible', !titleMode && step >= s);
+      el.classList.toggle('current-step', !titleMode && s === step);
+    });
+
+    document.querySelectorAll('.arrow, .arrow-label, .soundwave').forEach(el => {
+      const s = parseInt(el.dataset.step, 10);
+      const visible = !titleMode && step >= s;
+      el.classList.toggle('visible', visible);
+      el.classList.toggle('dimmed', visible && s < step);
+    });
+
+    document.getElementById('stepNum').textContent = step;
+    document.getElementById('stepTitle').textContent = STEP_TITLES[step];
+    document.getElementById('stepBar').style.width = (step / (TOTAL - 1) * 100) + '%';
+  }
+
+  function nextStep() { if (step < TOTAL - 1) { step++; render(); } }
+  function prevStep() { if (step > 0) { step--; render(); } }
+  window.goToStep = function(n) { if (n >= 0 && n < TOTAL) { step = n; render(); } };
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); nextStep(); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); prevStep(); }
+    else if (e.key === 'Home') { e.preventDefault(); step = 0; render(); }
+    else if (e.key === 'End') { e.preventDefault(); step = TOTAL - 1; render(); }
+    else if (e.key === 'f' || e.key === 'F') { e.preventDefault(); toggleFs(); }
+  });
+
+  const fsBtn = document.getElementById('fsBtn');
+  function toggleFs() {
+    const req = document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen;
+    if (req && !document.fullscreenElement && !document.webkitFullscreenElement) req.call(document.documentElement);
+    else if (document.exitFullscreen) document.exitFullscreen();
+  }
+  fsBtn.addEventListener('click', toggleFs);
+  function onFsChange() {
+    const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+    document.body.classList.toggle('is-fs', isFs);
+  }
+  document.addEventListener('fullscreenchange', onFsChange);
+  document.addEventListener('webkitfullscreenchange', onFsChange);
+
+  render();
+})();
+</script>
+</body>
+</html>

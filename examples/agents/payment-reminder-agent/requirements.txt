@@ -1,0 +1,10 @@
+livekit-agents>=1.0.0
+livekit-plugins-deepgram>=0.7.0
+livekit-plugins-openai>=0.10.0
+livekit-plugins-google>=0.6.0
+livekit-plugins-silero>=0.7.0
+livekit-murf>=0.1.0
+livekit-api>=0.7.0
+python-dotenv>=1.0.0
+twilio>=9.0.0
+psutil>=5.9.0

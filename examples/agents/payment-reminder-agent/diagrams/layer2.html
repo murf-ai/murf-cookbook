@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Layer 2 · The Enforcer</title>
+<style>
+:root {
+  --bg: #0b0d12; --text: #e6e8ef; --muted: #8b91a3; --stroke: #2a3040;
+  --state: #4ad1e8; --guard: #ff5a4d; --ok: #13ef93; --warn: #f4b13d; --llm: #f4d35e;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  min-height: 100vh;
+  background: radial-gradient(ellipse at 50% 40%, #141b26 0%, #0a0c10 72%);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+  overflow: hidden; display: flex; align-items: center; justify-content: center;
+}
+.stage { position: relative; width: 1240px; height: 760px; flex-shrink: 0; }
+
+/* Title */
+.title-wrap { position: absolute; top: 292px; left: 0; right: 0; text-align: center; transition: opacity 700ms var(--ease), transform 800ms var(--ease); pointer-events: none; z-index: 10; }
+.title-wrap .eyebrow { font-family: "SF Mono", Consolas, monospace; font-size: 14px; letter-spacing: 5px; text-transform: uppercase; color: var(--state); margin-bottom: 16px; }
+.title-wrap h1 { margin: 0; font-size: 58px; font-weight: 700; letter-spacing: -1.8px; background: linear-gradient(95deg, #ffffff 0%, #4ad1e8 70%, #2f9fd6 100%); background-size: 220% 100%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; animation: sh 14s ease-in-out infinite; }
+@keyframes sh { 0%,100%{background-position:0% 50%;} 50%{background-position:100% 50%;} }
+.title-wrap .sub { margin-top: 20px; color: var(--muted); font-family: "SF Mono", Consolas, monospace; font-size: 13px; letter-spacing: 2px; }
+body:not(.title-mode) .title-wrap { opacity: 0; transform: translateY(-18px); }
+
+/* Phase cards */
+.pcard { position: absolute; width: 236px; height: 216px; border-radius: 16px; border: 1px solid rgba(74,209,232,0.22); background: linear-gradient(180deg, rgba(20,26,36,0.97) 0%, rgba(13,17,25,0.97) 100%); padding: 16px 18px; opacity: 0; transform: translateY(14px) scale(0.97); transition: opacity 600ms var(--ease), transform 600ms var(--ease), border-color 400ms ease, box-shadow 400ms ease, filter 500ms ease; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+.pcard.show { opacity: 1; transform: translateY(0) scale(1); }
+.pcard.active { border-color: var(--state); box-shadow: 0 16px 44px rgba(0,0,0,0.6), 0 0 54px rgba(74,209,232,0.3); transform: translateY(-5px) scale(1.025); }
+.pcard.show.locked { opacity: 0.4; filter: grayscale(0.55) brightness(0.82); }
+.pcard-head { display: flex; align-items: center; justify-content: space-between; }
+.pnum { width: 26px; height: 26px; border-radius: 50%; background: rgba(74,209,232,0.12); border: 1px solid rgba(74,209,232,0.4); color: #a6ecf7; font-family: "SF Mono", Consolas, monospace; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; transition: all 400ms ease; }
+.pcard.active .pnum { background: var(--state); color: #04141a; border-color: var(--state); box-shadow: 0 0 16px rgba(74,209,232,0.6); }
+.picon svg { width: 24px; height: 24px; color: #6fd9ea; display: block; }
+.pname { font-size: 19px; font-weight: 700; margin-top: 13px; letter-spacing: 0.2px; }
+.pcode { font-family: "SF Mono", Consolas, monospace; font-size: 10px; color: var(--muted); margin-top: 5px; letter-spacing: 0.2px; }
+.pdiv { height: 1px; background: rgba(255,255,255,0.08); margin: 12px 0 11px; }
+.pacts { list-style: none; margin: 0; padding: 0; }
+.pacts li { font-size: 11.5px; color: #c2c7d4; line-height: 1.62; padding-left: 15px; position: relative; }
+.pacts li::before { content: '›'; position: absolute; left: 2px; color: var(--state); font-weight: 700; }
+.lockchip { position: absolute; top: -13px; right: 18px; display: inline-flex; align-items: center; gap: 5px; padding: 4px 11px; border-radius: 14px; background: #1a0f12; border: 1px solid rgba(255,90,77,0.6); color: #ff9d94; font-size: 10px; font-family: "SF Mono", Consolas, monospace; font-weight: 700; letter-spacing: 0.5px; box-shadow: 0 6px 16px rgba(0,0,0,0.5); transition: all 500ms var(--ease); }
+.lockchip svg { width: 12px; height: 12px; }
+.lockchip.open { background: #0c1a12; border-color: rgba(19,239,147,0.6); color: #7ef0b0; }
+
+/* Gate lock */
+.gatelock { position: absolute; left: 596px; top: 284px; width: 48px; height: 48px; border-radius: 50%; background: #160e11; border: 1.5px solid rgba(255,90,77,0.75); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 30px rgba(255,90,77,0.35); z-index: 6; opacity: 0; transform: scale(0.8); transition: opacity 500ms var(--ease), transform 500ms var(--ease), border-color 500ms ease, box-shadow 500ms ease; }
+.gatelock.show { opacity: 1; transform: scale(1); }
+.gatelock.pulse { animation: gpulse 1.6s ease-in-out infinite; }
+@keyframes gpulse { 0%,100%{ box-shadow: 0 0 26px rgba(255,90,77,0.32);} 50%{ box-shadow: 0 0 44px rgba(255,90,77,0.6);} }
+.gatelock svg { width: 23px; height: 23px; color: #ff6a5d; transition: color 500ms ease; }
+.gatelock .lk-open { display: none; }
+.gatelock.open { border-color: rgba(19,239,147,0.75); box-shadow: 0 0 34px rgba(19,239,147,0.4); animation: none; }
+.gatelock.open .lk-closed { display: none; }
+.gatelock.open .lk-open { display: block; color: #26e39a; }
+.gatelabel { position: absolute; left: 566px; top: 340px; width: 108px; text-align: center; font-family: "SF Mono", Consolas, monospace; font-size: 10px; letter-spacing: 0.3px; color: #ff9d94; opacity: 0; transition: opacity 500ms ease, color 500ms ease; }
+.gatelabel.show { opacity: 1; }
+.gatelabel.open { color: #7ef0b0; }
+
+/* Borrower */
+.borrower { position: absolute; left: 62px; top: 548px; opacity: 0; transform: translateY(10px); transition: opacity 600ms var(--ease), transform 600ms var(--ease); }
+.borrower.show { opacity: 1; transform: translateY(0); }
+.borrower .bcirc { width: 70px; height: 70px; border-radius: 50%; border: 1px solid var(--stroke); background: linear-gradient(180deg, rgba(26,30,42,0.98), rgba(16,19,28,0.98)); display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 30px rgba(0,0,0,0.55); }
+.borrower .bcirc svg { width: 34px; height: 34px; color: var(--text); }
+.borrower .blabel { text-align: center; margin-top: 8px; font-size: 12.5px; color: var(--muted); font-weight: 500; }
+
+/* Outcome branch chips */
+.branch { position: absolute; display: inline-flex; align-items: center; gap: 8px; padding: 7px 13px; border-radius: 10px; font-size: 12px; font-weight: 600; background: #12161f; border: 1px solid var(--stroke); opacity: 0; transform: translateX(-8px); transition: all 480ms var(--ease); white-space: nowrap; }
+.branch.show { opacity: 1; transform: translateX(0); }
+.branch .bdot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.branch-title { position: absolute; left: 942px; top: 436px; font-family: "SF Mono", Consolas, monospace; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); opacity: 0; transition: opacity 480ms ease; }
+.branch-title.show { opacity: 1; }
+
+/* Arrows */
+.arrows { position: absolute; top: 0; left: 0; width: 1240px; height: 760px; pointer-events: none; overflow: visible; z-index: 4; }
+.sarrow { fill: none; stroke-width: 2; opacity: 0; stroke-dasharray: var(--len, 600); stroke-dashoffset: var(--len, 600); transition: opacity 300ms ease, stroke-dashoffset 800ms var(--ease) 100ms; stroke-linecap: round; stroke-linejoin: round; }
+.sarrow.on { opacity: 1; stroke-dashoffset: 0; }
+.sarrow.cyan { stroke: var(--state); }
+.sarrow.dead { stroke: #4a5568; }
+.sarrow.dash { stroke: var(--guard); stroke-dasharray: 6 7; stroke-dashoffset: 0; opacity: 0; transition: opacity 400ms ease; }
+.sarrow.dash.on { opacity: 1; }
+.sarrow.gate-open { stroke: var(--ok); }
+.slabel { fill: var(--muted); font-family: "SF Mono", Consolas, monospace; font-size: 11px; opacity: 0; transition: opacity 500ms ease 200ms; }
+.slabel.on { opacity: 1; }
+.slabel.red { fill: #ff9d94; }
+.blocked-x { opacity: 0; transition: opacity 300ms ease; }
+.blocked-x.on { opacity: 1; }
+
+/* Caption */
+.caption { position: absolute; left: 50%; bottom: 60px; transform: translateX(-50%); width: 820px; text-align: center; font-size: 15.5px; line-height: 1.6; color: #c8cdda; opacity: 0; transition: opacity 400ms ease; }
+.caption.show { opacity: 1; }
+.caption b { color: #fff; font-weight: 700; }
+.caption .hi { color: var(--state); font-weight: 700; }
+.caption .rd { color: #ff8073; font-weight: 700; }
+
+/* Chrome */
+.indicator { position: fixed; bottom: 28px; right: 30px; color: var(--muted); font-size: 13px; z-index: 20; min-width: 250px; }
+.ind-main { display: flex; align-items: baseline; gap: 8px; justify-content: flex-end; }
+.ind-num { color: var(--text); font-family: "SF Mono", Consolas, monospace; font-weight: 700; font-size: 13px; }
+.ind-sep { color: var(--muted); opacity: 0.45; } .ind-title { color: var(--text); font-weight: 500; font-size: 14px; }
+.ind-bar { margin-top: 8px; height: 2px; background: rgba(255,255,255,0.07); border-radius: 2px; overflow: hidden; }
+.ind-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #4ad1e8 0%, #2f9fd6 100%); transition: width 600ms var(--ease); border-radius: 2px; }
+.fs-btn { position: fixed; top: 22px; right: 26px; background: rgba(20,24,33,0.7); border: 1px solid var(--stroke); color: var(--muted); width: 38px; height: 38px; border-radius: 9px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; transition: all 200ms ease; z-index: 30; backdrop-filter: blur(6px); }
+.fs-btn svg { width: 16px; height: 16px; } .fs-btn:hover { color: var(--text); border-color: rgba(74,209,232,0.5); transform: translateY(-1px); }
+body.is-fs .fs-btn { display: none; } body.is-fs { cursor: none; } body.is-fs:hover { cursor: default; }
+.help { position: fixed; bottom: 26px; left: 30px; font-family: "SF Mono", Consolas, monospace; color: var(--muted); font-size: 11px; opacity: 0.6; z-index: 20; }
+.help kbd { display: inline-block; padding: 2px 7px; margin: 0 2px; background: #1c2130; border: 1px solid var(--stroke); border-radius: 4px; font-size: 10px; color: var(--text); }
+.layerdots { position: fixed; top: 22px; left: 30px; display: flex; gap: 8px; align-items: center; z-index: 20; font-family: "SF Mono", Consolas, monospace; font-size: 11px; color: var(--muted); }
+.layerdots .dot { width: 9px; height: 9px; border-radius: 50%; background: #2a3040; border: 1px solid #3a4050; }
+.layerdots .dot.on { background: var(--state); border-color: var(--state); box-shadow: 0 0 10px rgba(74,209,232,0.6); }
+</style>
+</head>
+<body class="title-mode">
+<div class="stage">
+
+  <div class="title-wrap">
+    <div class="eyebrow">Layer 2</div>
+    <h1>The Enforcer</h1>
+    <div class="sub">a hard-coded state machine &nbsp;·&nbsp; state_machine.py</div>
+  </div>
+
+  <!-- Phase cards -->
+  <div class="pcard" id="card1" style="left:80px; top:200px;">
+    <div class="pcard-head">
+      <span class="pnum">1</span>
+      <span class="picon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-4 4v-4H4z"/><path d="M8.5 10.5h.01M12 10.5h.01M15.5 10.5h.01"/></svg></span>
+    </div>
+    <div class="pname">Greeting</div>
+    <div class="pcode">OPENING_DISCLOSURE</div>
+    <div class="pdiv"></div>
+    <ul class="pacts"><li>Introduce agent + company</li><li>Disclose the call is recorded</li><li>Confirm who's on the line</li></ul>
+  </div>
+
+  <div class="pcard" id="card2" style="left:344px; top:200px;">
+    <div class="pcard-head">
+      <span class="pnum">2</span>
+      <span class="picon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="11" r="2.1"/><path d="M13 9.5h5M13 13h4M5.2 16.2c.7-1.7 5-1.7 6.6 0"/></svg></span>
+    </div>
+    <div class="pname">Verification</div>
+    <div class="pcode">IDENTITY_VERIFICATION</div>
+    <div class="pdiv"></div>
+    <ul class="pacts"><li>Ask last 4 of mobile</li><li>Ask last 4 of account</li><li>verify_borrower_identity()</li></ul>
+  </div>
+
+  <div class="pcard" id="card3" style="left:660px; top:200px;">
+    <div class="lockchip" id="lockchip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><span id="lockchip-txt">LOCKED</span></div>
+    <div class="pcard-head">
+      <span class="pnum">3</span>
+      <span class="picon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18M7 14h4"/></svg></span>
+    </div>
+    <div class="pname">Payment Discussion</div>
+    <div class="pcode">PAYMENT_CONTEXT &rarr; INTENT &rarr; LINK</div>
+    <div class="pdiv"></div>
+    <ul class="pacts"><li>State amount + due date</li><li>send_payment_link()</li><li>log_promise_to_pay()</li></ul>
+  </div>
+
+  <div class="pcard" id="card4" style="left:924px; top:200px;">
+    <div class="pcard-head">
+      <span class="pnum">4</span>
+      <span class="picon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 21V4M6 4h12l-2.5 4L18 12H6"/></svg></span>
+    </div>
+    <div class="pname">Outcome</div>
+    <div class="pcode">CALL_SUMMARY &middot; handoff</div>
+    <div class="pdiv"></div>
+    <ul class="pacts"><li>Summarise the outcome</li><li>Log the result</li><li>Close the call politely</li></ul>
+  </div>
+
+  <!-- Gate lock -->
+  <div class="gatelock" id="gatelock">
+    <svg class="lk-closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+    <svg class="lk-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7.5A4 4 0 0 1 15.5 6"/></svg>
+  </div>
+  <div class="gatelabel" id="gatelabel">verify to unlock</div>
+
+  <!-- Outcome branches -->
+  <div class="branch-title" id="branchtitle">resolves to</div>
+  <div class="branch" id="br1" style="left:942px; top:456px;"><span class="bdot" style="background:#13ef93;"></span>Promise to pay</div>
+  <div class="branch" id="br2" style="left:942px; top:496px;"><span class="bdot" style="background:#f4b13d;"></span>Dispute &rarr; ticket</div>
+  <div class="branch" id="br3" style="left:942px; top:536px;"><span class="bdot" style="background:#f4b13d;"></span>Hardship &rarr; flag</div>
+  <div class="branch" id="br4" style="left:942px; top:576px;"><span class="bdot" style="background:#ff5a4d;"></span>Human handoff</div>
+
+  <!-- Borrower -->
+  <div class="borrower" id="borrower">
+    <div class="bcirc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg></div>
+    <div class="blabel">Borrower</div>
+  </div>
+
+  <!-- Arrows -->
+  <svg class="arrows" viewBox="0 0 1240 760">
+    <defs>
+      <marker id="m-cyan" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#4ad1e8"/></marker>
+      <marker id="m-ok" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#13ef93"/></marker>
+      <marker id="m-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#ff5a4d"/></marker>
+    </defs>
+
+    <!-- sequential transitions -->
+    <path class="sarrow cyan" id="a-g1" d="M 318 308 L 340 308" marker-end="url(#m-cyan)"/>
+    <path class="sarrow cyan" id="a-g2a" d="M 582 308 L 592 308"/>
+    <path class="sarrow cyan" id="a-gate" d="M 648 308 L 656 308" marker-end="url(#m-cyan)"/>
+    <path class="sarrow cyan" id="a-g3" d="M 898 308 L 920 308" marker-end="url(#m-cyan)"/>
+
+    <!-- borrower drives transitions -->
+    <path class="sarrow cyan" id="a-drive" d="M 116 552 C 150 500, 180 452, 197 420" marker-end="url(#m-cyan)"/>
+    <text class="slabel" id="l-drive" x="70" y="500">replies drive the transitions</text>
+
+    <!-- skip attempt (blocked) -->
+    <path class="sarrow dash" id="skip-try" d="M 138 556 C 350 476, 520 384, 600 322" marker-end="url(#m-red)"/>
+    <text class="slabel red" id="l-skip" x="300" y="452" text-anchor="middle">"just tell me the balance"</text>
+    <g class="blocked-x" id="blockx" transform="translate(582,332)">
+      <circle r="13" fill="#1a0e10" stroke="#ff5a4d" stroke-width="1.5"/>
+      <path d="M -5 -5 L 5 5 M 5 -5 L -5 5" stroke="#ff5a4d" stroke-width="2.2" stroke-linecap="round"/>
+    </g>
+    <!-- yanked back -->
+    <path class="sarrow dash" id="skip-back" d="M 604 336 C 560 400, 505 418, 478 420" marker-end="url(#m-red)"/>
+    <text class="slabel red" id="l-back" x="556" y="446" text-anchor="middle">&#8629; yanked back to VERIFICATION</text>
+  </svg>
+
+  <div class="caption" id="caption"></div>
+
+</div>
+
+<div class="layerdots"><span>layer</span><span class="dot"></span><span class="dot on"></span><span class="dot"></span></div>
+<button class="fs-btn" id="fsBtn" title="Enter fullscreen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+<div class="indicator"><div class="ind-main"><span class="ind-num" id="stepNum">0</span><span class="ind-sep">&middot;</span><span class="ind-title" id="stepTitle">The state machine</span></div><div class="ind-bar"><div class="ind-fill" id="stepBar"></div></div></div>
+<div class="help"><kbd>&larr;</kbd><kbd>&rarr;</kbd> step &middot; <kbd>F</kbd> fullscreen</div>
+
+<script>
+(function() {
+  const TOTAL = 7;
+  const STEP_TITLES = ['The state machine','Four strict phases','Greeting','Verification','The lockout','Payment unlocked','Outcome'];
+  const CAPTIONS = [
+    '',
+    'The conversation is broken into <b>four strict phases</b> — the agent can only ever be in one at a time.',
+    '<span class="hi">Greeting</span> — the agent introduces itself, discloses the call is recorded, and confirms who\'s on the line.',
+    '<span class="hi">Verification</span> — identity must be confirmed with two data points. Until then, <b>Payment is locked</b>.',
+    'If the borrower tries to skip ahead, the state machine <span class="rd">yanks them back</span> — the LLM never gets payment context early.',
+    'Identity verified &#10003; — the gate <span class="hi">unlocks</span> and the agent may finally discuss the payment.',
+    '<span class="hi">Outcome</span> — the call resolves into a logged result, or routes to dispute, hardship, or a human handoff.'
+  ];
+  let step = 0;
+
+  document.querySelectorAll('.sarrow:not(.dash)').forEach(a => { try { const l = Math.ceil(a.getTotalLength()); if (l>0) a.style.setProperty('--len', l); } catch(e){} });
+
+  const $ = id => document.getElementById(id);
+  function cls(el, name, on) { if (el) el.classList.toggle(name, on); }
+
+  function render() {
+    const titleMode = step === 0;
+    document.body.classList.toggle('title-mode', titleMode);
+
+    const showTrack = step >= 1;
+    ['card1','card2','card3','card4'].forEach(id => cls($(id), 'show', showTrack));
+    cls($('borrower'), 'show', showTrack);
+    cls($('gatelock'), 'show', showTrack);
+    cls($('gatelabel'), 'show', showTrack);
+
+    // sequential + drive arrows
+    ['a-g1','a-g2a','a-gate','a-g3','a-drive'].forEach(id => cls($(id), 'on', showTrack));
+    cls($('l-drive'), 'on', step >= 2);
+
+    // active phase
+    const active = { 2:'card1', 3:'card2', 4:'card2', 5:'card3', 6:'card4' }[step] || null;
+    ['card1','card2','card3','card4'].forEach(id => cls($(id), 'active', id === active));
+
+    // lock state
+    const unlocked = step >= 5;
+    cls($('card3'), 'locked', showTrack && !unlocked);
+    cls($('gatelock'), 'open', unlocked);
+    cls($('gatelock'), 'pulse', showTrack && !unlocked && step >= 3);
+    cls($('gatelabel'), 'open', unlocked);
+    if ($('gatelabel')) $('gatelabel').textContent = unlocked ? 'unlocked' : 'verify to unlock';
+    const lc = $('lockchip'); if (lc) { cls(lc, 'open', unlocked); $('lockchip-txt').textContent = unlocked ? 'UNLOCKED' : 'LOCKED'; }
+    // gate arrow turns green when open
+    cls($('a-gate'), 'gate-open', unlocked);
+    if ($('a-gate')) $('a-gate').setAttribute('marker-end', unlocked ? 'url(#m-ok)' : 'url(#m-cyan)');
+
+    // skip demo (step 4 only)
+    const demo = step === 4;
+    ['skip-try','skip-back'].forEach(id => cls($(id), 'on', demo));
+    ['l-skip','l-back'].forEach(id => cls($(id), 'on', demo));
+    cls($('blockx'), 'on', demo);
+
+    // outcome branches (step 6)
+    const out = step >= 6;
+    cls($('branchtitle'), 'show', out);
+    ['br1','br2','br3','br4'].forEach(id => cls($(id), 'show', out));
+
+    // caption
+    const cap = $('caption');
+    cap.innerHTML = CAPTIONS[step] || '';
+    cls(cap, 'show', !titleMode && !!CAPTIONS[step]);
+
+    $('stepNum').textContent = step;
+    $('stepTitle').textContent = STEP_TITLES[step];
+    $('stepBar').style.width = (step/(TOTAL-1)*100) + '%';
+  }
+
+  function next(){ if(step<TOTAL-1){step++;render();} }
+  function prev(){ if(step>0){step--;render();} }
+  document.addEventListener('keydown', e => {
+    if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();next();}
+    else if(e.key==='ArrowLeft'){e.preventDefault();prev();}
+    else if(e.key==='Home'){e.preventDefault();step=0;render();}
+    else if(e.key==='End'){e.preventDefault();step=TOTAL-1;render();}
+    else if(e.key==='f'||e.key==='F'){e.preventDefault();toggleFs();}
+  });
+  const fsBtn = $('fsBtn');
+  function toggleFs(){ const r = document.documentElement.requestFullscreen||document.documentElement.webkitRequestFullscreen; if(r && !document.fullscreenElement && !document.webkitFullscreenElement) r.call(document.documentElement); else if(document.exitFullscreen) document.exitFullscreen(); }
+  fsBtn.addEventListener('click', toggleFs);
+  function onFs(){ document.body.classList.toggle('is-fs', !!(document.fullscreenElement||document.webkitFullscreenElement)); }
+  document.addEventListener('fullscreenchange', onFs); document.addEventListener('webkitfullscreenchange', onFs);
+  render();
+})();
+</script>
+</body>
+</html>

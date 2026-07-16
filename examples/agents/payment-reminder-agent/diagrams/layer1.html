@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Layer 1 · The Foundation</title>
+<style>
+:root {
+  --bg: #0b0d12; --text: #e6e8ef; --muted: #8b91a3; --stroke: #2a3040;
+  --twilio: #f22f46; --livekit: #3d7bff; --stt: #13ef93; --llm: #f4d35e;
+  --murf: #7a5cff; --prompt: #c77dff; --agent: #9aa4c0;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  min-height: 100vh;
+  background: radial-gradient(ellipse at 58% 48%, #161b27 0%, #0a0c10 72%);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+  overflow: hidden; display: flex; align-items: center; justify-content: center;
+}
+.stage { position: relative; width: 1240px; height: 760px; flex-shrink: 0; }
+
+.header { position: absolute; top: 30px; left: 42px; z-index: 10; }
+.header .eyebrow { font-family: "SF Mono", Consolas, monospace; font-size: 12px; letter-spacing: 4px; text-transform: uppercase; color: var(--prompt); }
+.header .htitle { font-size: 27px; font-weight: 700; margin-top: 9px; letter-spacing: -0.4px; color: #fff; }
+.header .hsub { font-family: "SF Mono", Consolas, monospace; font-size: 12px; color: var(--muted); margin-top: 8px; letter-spacing: 0.5px; }
+.header .dots { display: flex; gap: 7px; margin-top: 14px; align-items: center; }
+.header .dots .dot { width: 9px; height: 9px; border-radius: 50%; background: #2a3040; border: 1px solid #3a4050; }
+.header .dots .dot.on { background: var(--prompt); border-color: var(--prompt); box-shadow: 0 0 10px rgba(199,125,255,0.6); }
+
+.node { position: absolute; left: 0; top: 0; transform: translate(var(--ax, 0px), var(--ay, 0px)); }
+.node .badge { animation: badgeFloat 5.5s ease-in-out infinite; animation-delay: calc(0.2s + var(--stagger, 0s)); }
+.node-agent { --stagger: 0.2s; } .node-twilio { --stagger: 0s; } .node-stt { --stagger: 1s; } .node-llm { --stagger: 0.3s; } .node-murf { --stagger: 1.4s; } .node-user { --stagger: 0.8s; }
+@keyframes badgeFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+.node .badge:hover { animation-play-state: paused; transform: translateY(-6px) scale(1.035); border-color: var(--node-accent, #4a5268); box-shadow: 0 18px 44px rgba(0,0,0,0.7), 0 0 40px var(--node-glow, rgba(255,255,255,0.15)); cursor: help; }
+.node-agent { --node-accent: var(--agent); --node-glow: rgba(154,164,192,0.24); }
+.node-twilio { --node-accent: var(--twilio); --node-glow: rgba(242,47,70,0.30); }
+.node-stt { --node-accent: var(--stt); --node-glow: rgba(19,239,147,0.28); }
+.node-llm { --node-accent: var(--llm); --node-glow: rgba(244,211,94,0.30); }
+.node-murf { --node-accent: var(--murf); --node-glow: rgba(122,92,255,0.32); }
+.node-user { --node-accent: #7b8499; --node-glow: rgba(230,232,239,0.18); }
+
+.badge { position: relative; background: linear-gradient(180deg, rgba(26,30,42,0.98) 0%, rgba(16,19,28,0.98) 100%); border: 1px solid var(--stroke); border-radius: 13px; padding: 11px 16px 11px 13px; display: inline-flex; align-items: center; gap: 11px; font-weight: 600; font-size: 15.5px; white-space: nowrap; box-shadow: 0 10px 30px rgba(0,0,0,0.55), 0 1px 0 rgba(255,255,255,0.04) inset; transition: box-shadow 280ms ease, border-color 280ms ease; }
+.badge .brand-name { display: inline-flex; flex-direction: column; gap: 2px; line-height: 1.15; }
+.badge .sublabel { font-size: 10px; color: var(--muted); font-family: "SF Mono", Consolas, monospace; font-weight: 500; letter-spacing: 0.2px; }
+.node-agent .badge { border-color: rgba(154,164,192,0.5); } .node-twilio .badge { border-color: rgba(242,47,70,0.5); } .node-stt .badge { border-color: rgba(19,239,147,0.45); } .node-llm .badge { border-color: rgba(244,211,94,0.5); } .node-murf .badge { border-color: rgba(122,92,255,0.5); }
+
+.logo { position: relative; width: 28px; height: 28px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; }
+.logo img { width: 100%; height: 100%; object-fit: contain; }
+.logo svg { width: 100%; height: 100%; display: block; }
+.logo .fallback { position: absolute; inset: 0; display: none; }
+.logo.img-failed .fallback { display: flex; } .logo.img-failed img { display: none; }
+
+.node-user .badge { border-radius: 50%; padding: 15px; width: 72px; height: 72px; justify-content: center; border-color: var(--stroke); }
+.node-user svg { width: 36px; height: 36px; color: var(--text); display: block; }
+.node-user .user-label { position: absolute; left: 50%; bottom: -24px; transform: translateX(-50%); font-size: 12.5px; color: var(--muted); font-weight: 500; white-space: nowrap; }
+
+.tooltip { position: absolute; bottom: calc(100% + 16px); left: 50%; transform: translateX(-50%) translateY(8px); background: linear-gradient(180deg, #161b27 0%, #0e1219 100%); border: 1px solid var(--stroke); border-radius: 12px; padding: 11px 14px 12px; width: 244px; font-size: 11.5px; line-height: 1.55; color: #cdd1dc; opacity: 0; pointer-events: none; transition: opacity 280ms var(--ease), transform 280ms var(--ease); z-index: 1000; text-align: left; font-weight: 400; box-shadow: 0 18px 44px rgba(0,0,0,0.75); }
+.tooltip .tt-title { display: block; font-weight: 700; font-size: 12px; color: var(--node-accent, #fff); margin-bottom: 4px; }
+.tooltip::after { content: ''; position: absolute; top: 100%; left: 50%; margin-left: -7px; border: 7px solid transparent; border-top-color: var(--stroke); }
+.node:hover .tooltip, .layer .layer-label:hover .tooltip { opacity: 1; transform: translateX(-50%) translateY(0); transition-delay: 120ms; }
+
+.infra { position: absolute; border: 1.5px solid rgba(61,123,255,0.4); border-radius: 24px; background: linear-gradient(180deg, rgba(61,123,255,0.05) 0%, rgba(61,123,255,0.014) 100%); box-shadow: 0 0 90px rgba(61,123,255,0.12), inset 0 0 70px rgba(61,123,255,0.028); }
+.infra .infra-head { pointer-events: auto; cursor: help; }
+.infra-head { position: absolute; top: 15px; left: 20px; display: flex; align-items: center; gap: 9px; padding: 4px 6px; border-radius: 8px; transition: background 220ms ease; --node-accent: var(--livekit); }
+.infra-head:hover { background: rgba(61,123,255,0.08); }
+.infra-head .logo { width: 22px; height: 22px; }
+.infra-label { font-weight: 700; font-size: 16px; color: #6b9bff; letter-spacing: 0.2px; }
+.infra-sub { position: absolute; top: 41px; left: 24px; font-family: "SF Mono", Consolas, monospace; font-size: 10px; color: var(--muted); letter-spacing: 0.4px; }
+.infra-tooltip { bottom: auto; top: calc(100% + 14px); left: 0; transform: translateY(8px); }
+.infra-tooltip::after { top: auto; bottom: 100%; border-top-color: transparent; border-bottom-color: var(--stroke); left: 26px; margin-left: 0; }
+.infra-head:hover .infra-tooltip { opacity: 1; transform: translateY(0); transition-delay: 120ms; }
+
+.layer { position: absolute; border-radius: 22px; border: 1.5px solid var(--layer-accent, #444); }
+.layer .layer-label { pointer-events: auto; cursor: help; }
+.layer-prompt { --layer-accent: rgba(199,125,255,0.7); background: linear-gradient(180deg, rgba(199,125,255,0.1) 0%, rgba(199,125,255,0.03) 100%); box-shadow: 0 0 80px rgba(199,125,255,0.22), inset 0 0 48px rgba(199,125,255,0.06); }
+.layer-label { position: absolute; top: 0; left: 50%; transform: translate(-50%, -50%); display: inline-flex; align-items: center; gap: 8px; padding: 6px 15px; border-radius: 20px; background: #0c0f16; border: 1px solid var(--layer-accent); font-weight: 700; font-size: 13px; letter-spacing: 0.4px; white-space: nowrap; color: #d9b3ff; box-shadow: 0 6px 20px rgba(0,0,0,0.5); --node-accent: var(--prompt); }
+.layer-label svg { width: 15px; height: 15px; display: block; }
+.layer-label .lbl-sub { font-family: "SF Mono", Consolas, monospace; font-size: 9.5px; font-weight: 500; color: var(--muted); letter-spacing: 0.3px; }
+.layer-label .tooltip { bottom: auto; top: calc(100% + 14px); }
+.layer-label .tooltip::after { top: auto; bottom: 100%; border-top-color: transparent; border-bottom-color: var(--stroke); }
+
+.arrows { position: absolute; top: 0; left: 0; width: 1240px; height: 760px; pointer-events: none; overflow: visible; }
+.arrow { fill: none; stroke: #6a7085; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.arrow.accent-twilio { stroke: var(--twilio); } .arrow.accent-livekit { stroke: var(--livekit); } .arrow.accent-stt { stroke: var(--stt); } .arrow.accent-murf { stroke: var(--murf); }
+.arrow.dashed { stroke-dasharray: 5 6; }
+.arrow-label { fill: var(--muted); font-family: "SF Mono", Consolas, monospace; font-size: 11px; }
+.soundwave { pointer-events: none; filter: drop-shadow(0 0 6px rgba(122,92,255,0.55)); }
+.soundwave .wb { transform-box: fill-box; transform-origin: center; animation: swPulse 0.95s ease-in-out infinite; }
+.soundwave .wb:nth-child(1){animation-delay:0s;}.soundwave .wb:nth-child(2){animation-delay:.11s;}.soundwave .wb:nth-child(3){animation-delay:.22s;}.soundwave .wb:nth-child(4){animation-delay:.33s;}.soundwave .wb:nth-child(5){animation-delay:.2s;}.soundwave .wb:nth-child(6){animation-delay:.08s;}
+@keyframes swPulse { 0%, 100% { transform: scaleY(0.2); } 50% { transform: scaleY(1.1); } }
+
+.lcaption { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); width: 840px; text-align: center; font-size: 15px; line-height: 1.6; color: #c8cdda; }
+.lcaption b { color: #fff; font-weight: 700; } .lcaption .hi { color: var(--prompt); font-weight: 700; }
+
+.fs-btn { position: fixed; top: 22px; right: 26px; background: rgba(20,24,33,0.7); border: 1px solid var(--stroke); color: var(--muted); width: 38px; height: 38px; border-radius: 9px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; transition: all 200ms ease; z-index: 30; backdrop-filter: blur(6px); }
+.fs-btn svg { width: 16px; height: 16px; } .fs-btn:hover { color: var(--text); border-color: rgba(199,125,255,0.5); transform: translateY(-1px); }
+body.is-fs .fs-btn { display: none; } body.is-fs { cursor: none; } body.is-fs:hover { cursor: default; }
+</style>
+</head>
+<body>
+<div class="stage">
+
+  <div class="header">
+    <div class="eyebrow">Layer 1</div>
+    <div class="htitle">The Foundation</div>
+    <div class="hsub">basic outbound call agent + system prompt</div>
+    <div class="dots"><span class="dot on"></span><span class="dot"></span><span class="dot"></span></div>
+  </div>
+
+  <div class="infra" style="left:420px; top:104px; width:770px; height:576px;">
+    <div class="infra-head">
+      <div class="logo">
+        <img src="https://cdn.simpleicons.org/livekit/3D7BFF" alt="" onerror="this.parentNode.classList.add('img-failed')">
+        <div class="fallback"><svg viewBox="0 0 32 32"><rect x="5" y="13" width="4" height="6" rx="1" fill="#3d7bff"/><rect x="12" y="8" width="4" height="16" rx="1" fill="#3d7bff"/><rect x="19" y="11" width="4" height="10" rx="1" fill="#3d7bff"/><rect x="26" y="14" width="3.5" height="4" rx="1" fill="#3d7bff"/></svg></div>
+      </div>
+      <div class="infra-label">LiveKit Agents</div>
+      <div class="tooltip infra-tooltip"><span class="tt-title">LiveKit · infrastructure</span>Real-time transport and agent runtime. Bridges the phone call into a room and runs the full STT&rarr;LLM&rarr;TTS session — everything inside this box lives on LiveKit.</div>
+    </div>
+    <div class="infra-sub">infrastructure &middot; transport &amp; session</div>
+  </div>
+
+  <div class="layer layer-prompt" style="left:777px; top:306px; width:262px; height:196px;">
+    <div class="layer-label">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h14M5 10h9M5 15h11M5 20h6"/></svg>
+      System Prompt <span class="lbl-sub">payment_prompt.py</span>
+      <div class="tooltip"><span class="tt-title">System Prompt · identity, voice &amp; context</span>Gives the agent who it is (name &amp; company), how it speaks, and the borrower's context. It's the agent's core knowledge — but a prompt alone can't <em>govern</em> the flow of a compliant call. That's what Layers 2 &amp; 3 add.</div>
+    </div>
+  </div>
+
+  <svg class="arrows" viewBox="0 0 1240 760">
+    <defs>
+      <marker id="ah-twilio" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#f22f46"/></marker>
+      <marker id="ah-livekit" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#3d7bff"/></marker>
+      <marker id="ah-stt" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#13ef93"/></marker>
+      <marker id="ah-murf" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#7a5cff"/></marker>
+    </defs>
+    <path class="arrow accent-livekit" d="M 452 226 C 408 258, 350 330, 302 356" marker-end="url(#ah-twilio)"/>
+    <text class="arrow-label" x="392" y="300" text-anchor="middle">places call</text>
+    <path class="arrow accent-twilio" d="M 206 390 L 142 385" marker-end="url(#ah-twilio)"/>
+    <text class="arrow-label" x="176" y="372" text-anchor="middle">dials out</text>
+    <path class="arrow accent-stt" d="M 124 360 C 240 302, 340 332, 436 360" marker-end="url(#ah-stt)"/>
+    <text class="arrow-label" x="252" y="308" text-anchor="middle">borrower audio</text>
+    <path class="arrow accent-stt" d="M 622 364 C 702 376, 772 398, 831 404" marker-end="url(#ah-stt)"/>
+    <text class="arrow-label" x="708" y="372" text-anchor="middle">transcript</text>
+    <path class="arrow accent-murf" d="M 860 430 C 780 484, 700 536, 594 536" marker-end="url(#ah-murf)"/>
+    <text class="arrow-label" x="712" y="508" text-anchor="middle">reply text</text>
+    <path class="arrow accent-murf dashed" d="M 438 540 C 300 598, 150 468, 104 420" marker-end="url(#ah-murf)"/>
+    <text class="arrow-label" x="238" y="596" text-anchor="middle">spoken reply</text>
+    <g class="soundwave">
+      <rect class="wb" x="12" y="372" width="3" height="17" rx="1.5" fill="#7a5cff"/><rect class="wb" x="20" y="372" width="3" height="17" rx="1.5" fill="#7a5cff"/><rect class="wb" x="28" y="372" width="3" height="17" rx="1.5" fill="#7a5cff"/><rect class="wb" x="36" y="372" width="3" height="17" rx="1.5" fill="#7a5cff"/><rect class="wb" x="44" y="372" width="3" height="17" rx="1.5" fill="#7a5cff"/><rect class="wb" x="52" y="372" width="3" height="17" rx="1.5" fill="#7a5cff"/>
+    </g>
+  </svg>
+
+  <div class="node node-user" style="--ax:64px; --ay:350px;">
+    <div class="badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg><div class="user-label">Borrower</div></div>
+    <div class="tooltip"><span class="tt-title">The Borrower</span>The agent dials <em>them</em> — an outbound call. They answer, speak, and hear the agent's reply.</div>
+  </div>
+
+  <div class="node node-agent" style="--ax:440px; --ay:178px;">
+    <div class="badge">
+      <div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="#c3cbe4" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 8V4.6"/><circle cx="12" cy="3.4" r="1.3" fill="#c3cbe4" stroke="none"/><circle cx="9.2" cy="14" r="1.4" fill="#c3cbe4" stroke="none"/><circle cx="14.8" cy="14" r="1.4" fill="#c3cbe4" stroke="none"/><path d="M2 13v3M22 13v3"/></svg></div>
+      <span class="brand-name">Payment Agent<span class="sublabel">run.py &middot; worker</span></span>
+    </div>
+    <div class="tooltip"><span class="tt-title">Payment Agent · orchestrator</span>The agent worker running on LiveKit. It dispatches the outbound call and drives the STT&rarr;LLM&rarr;TTS session.</div>
+  </div>
+
+  <div class="node node-twilio" style="--ax:210px; --ay:356px;">
+    <div class="badge">
+      <div class="logo"><img src="https://cdn.simpleicons.org/twilio/F22F46" alt="" onerror="this.parentNode.classList.add('img-failed')"><div class="fallback"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="none" stroke="#f22f46" stroke-width="3"/><circle cx="11" cy="11" r="3" fill="#f22f46"/><circle cx="21" cy="11" r="3" fill="#f22f46"/><circle cx="11" cy="21" r="3" fill="#f22f46"/><circle cx="21" cy="21" r="3" fill="#f22f46"/></svg></div></div>
+      <span class="brand-name">Twilio<span class="sublabel">PSTN &middot; SIP</span></span>
+    </div>
+    <div class="tooltip"><span class="tt-title">Twilio · telephony</span>Elastic SIP trunk that carries the outbound call over the PSTN and supplies the caller ID.</div>
+  </div>
+
+  <div class="node node-stt" style="--ax:440px; --ay:336px;">
+    <div class="badge">
+      <div class="logo"><img src="https://cdn.simpleicons.org/deepgram/13EF93" alt="" onerror="this.parentNode.classList.add('img-failed')"><div class="fallback"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="#13ef93"/><path d="M9 16 Q 12.5 10.5, 16 16 T 23 16" stroke="#0a0c10" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg></div></div>
+      <span class="brand-name">Speech&nbsp;&rarr;&nbsp;Text<span class="sublabel">deepgram &middot; whisper</span></span>
+    </div>
+    <div class="tooltip"><span class="tt-title">STT · speech to text</span>Streaming transcription — Deepgram nova-3 by default, OpenAI Whisper as an alternative, gated by Silero VAD.</div>
+  </div>
+
+  <div class="node node-llm" style="--ax:833px; --ay:377px;">
+    <div class="badge">
+      <div class="logo"><img src="https://cdn.simpleicons.org/openai/F4D35E" alt="" onerror="this.parentNode.classList.add('img-failed')"><div class="fallback"><svg viewBox="0 0 32 32" fill="none" stroke="#f4d35e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="7" width="18" height="18" rx="3.5"/><circle cx="16" cy="16" r="3.2" fill="#f4d35e" stroke="none"/><path d="M12 7V3.5M20 7V3.5M12 28.5V25M20 28.5V25M7 12H3.5M7 20H3.5M28.5 12H25M28.5 20H25"/></svg></div></div>
+      <span class="brand-name">LLM<span class="sublabel">gpt-4o-mini &middot; gemini</span></span>
+    </div>
+    <div class="tooltip"><span class="tt-title">LLM · the reasoning core</span>Reads the transcript and drafts the reply. Pluggable — OpenAI or Gemini. It can <em>think and talk</em>, but on its own it can't govern a compliant call.</div>
+  </div>
+
+  <div class="node node-murf" style="--ax:440px; --ay:510px;">
+    <div class="badge">
+      <div class="logo">
+        <svg viewBox="0 0 32 30" xmlns="http://www.w3.org/2000/svg" fill="none">
+          <defs>
+            <radialGradient id="mp0" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(14.75 16.86) rotate(180) scale(20.89 21.01)"><stop offset="0.28" stop-color="#DAABFF"/><stop offset="0.87" stop-color="#735DFF"/></radialGradient>
+            <linearGradient id="mp1" x1="-5.99" y1="11.79" x2="15.02" y2="23.30" gradientUnits="userSpaceOnUse"><stop offset="0.42" stop-color="#C6B2FF"/><stop offset="0.84" stop-color="#735DFF"/></linearGradient>
+            <radialGradient id="mp3" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(16.66 13.14) scale(20.89 21.01)"><stop offset="0.22" stop-color="#FFD522"/><stop offset="0.34" stop-color="#FFAD37"/><stop offset="0.45" stop-color="#FF7E51"/><stop offset="0.54" stop-color="#FF4B6C"/><stop offset="1" stop-color="#C81395"/></radialGradient>
+            <linearGradient id="mp4" x1="15.05" y1="16.25" x2="33.85" y2="13.33" gradientUnits="userSpaceOnUse"><stop offset="0.35" stop-color="#F02173"/><stop offset="0.61" stop-color="#E81DB8"/><stop offset="0.76" stop-color="#C516E1"/><stop offset="1" stop-color="#735DFF"/></linearGradient>
+            <linearGradient id="mp5" x1="10.92" y1="9.54" x2="19.92" y2="9.54" gradientUnits="userSpaceOnUse"><stop stop-color="white"/><stop offset="0.45" stop-color="white" stop-opacity="0.5"/><stop offset="0.96" stop-color="white" stop-opacity="0"/></linearGradient>
+          </defs>
+          <path d="M20.898 20.219L1.925 1.132C1.767 0.974 1.566 0.866 1.347 0.822C1.128 0.779 0.902 0.802 0.696 0.888C0.490 0.974 0.314 1.119 0.190 1.306C0.066 1.492 0 1.711 0 1.936C0 7.240 0.973 15.167 3.869 19.429C7.986 25.489 15.578 26.183 20.898 20.219Z" fill="url(#mp0)"/>
+          <path d="M0 25.783C0 26.422 0.144 27.053 0.422 27.628C0.700 28.203 1.104 28.707 1.605 29.102C2.105 29.496 2.688 29.771 3.309 29.906C3.931 30.041 4.575 30.031 5.192 29.879C10.713 28.509 16.380 25.711 20.974 20.298L20.898 20.221C15.578 26.185 7.986 25.491 3.869 19.431C0.973 15.168 0 7.242 0 1.938V25.783Z" fill="url(#mp1)"/>
+          <path d="M10.516 9.783L29.489 28.871C29.647 29.029 29.848 29.137 30.067 29.180C30.285 29.224 30.512 29.201 30.718 29.115C30.924 29.029 31.100 28.884 31.224 28.697C31.348 28.511 31.414 28.291 31.414 28.067C31.414 22.763 30.440 14.836 27.545 10.574C23.428 4.513 15.836 3.820 10.516 9.783Z" fill="url(#mp3)"/>
+          <path d="M31.420 4.222C31.420 3.582 31.276 2.951 30.998 2.376C30.720 1.801 30.315 1.297 29.815 0.903C29.315 0.508 28.732 0.233 28.110 0.098C27.489 -0.036 26.845 -0.027 26.228 0.126C20.706 1.495 15.039 4.294 10.445 9.706L10.522 9.783C15.842 3.820 23.434 4.513 27.551 10.574C30.446 14.836 31.420 22.763 31.420 28.067V4.222Z" fill="url(#mp4)"/>
+          <path d="M11.313 8.958C11.313 8.958 16.672 3.127 23.731 6.936L17.275 13.428L11.313 8.958Z" fill="url(#mp5)"/>
+          <circle cx="15.71" cy="15.00" r="7.45" fill="white"/>
+        </svg>
+      </div>
+      <span class="brand-name">Murf<span class="sublabel">text &rarr; speech</span></span>
+    </div>
+    <div class="tooltip"><span class="tt-title">Murf · text to speech</span>Turns the reply text into natural-sounding speech in the agent's configured voice, sent back to the borrower.</div>
+  </div>
+
+  <div class="lcaption">Layer 1 handles <b>listening, thinking &amp; speaking</b> — the agent gets its identity, voice and context from the <span class="hi">system prompt</span>. But a prompt alone can't be trusted to <b>govern</b> a compliant call. That's what Layers 2 &amp; 3 add.</div>
+
+</div>
+
+<button class="fs-btn" id="fsBtn" title="Enter fullscreen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+
+<script>
+(function() {
+  const fsBtn = document.getElementById('fsBtn');
+  function toggleFs(){ const r = document.documentElement.requestFullscreen||document.documentElement.webkitRequestFullscreen; if(r && !document.fullscreenElement && !document.webkitFullscreenElement) r.call(document.documentElement); else if(document.exitFullscreen) document.exitFullscreen(); }
+  fsBtn.addEventListener('click', toggleFs);
+  document.addEventListener('keydown', e => { if(e.key==='f'||e.key==='F'){ e.preventDefault(); toggleFs(); } });
+  function onFs(){ document.body.classList.toggle('is-fs', !!(document.fullscreenElement||document.webkitFullscreenElement)); }
+  document.addEventListener('fullscreenchange', onFs); document.addEventListener('webkitfullscreenchange', onFs);
+})();
+</script>
+</body>
+</html>

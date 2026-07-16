@@ -1,0 +1,15 @@
+{
+  "rule": {
+    "dispatchRuleIndividual": {
+      "roomPrefix": "payment-"
+    }
+  },
+  "name": "payment-agent",
+  "roomConfig": {
+    "agents": [
+      {
+        "agentName": "payment-agent"
+      }
+    ]
+  }
+}
